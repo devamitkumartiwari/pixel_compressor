@@ -14,6 +14,9 @@ All processing happens on-device. Nothing is ever uploaded anywhere.
 | Video compression | ✅ | ✅ | ✅ | ❌ |
 | Thumbnails | ✅ | ✅ | ✅ | ❌ |
 | Metadata | ✅ | ✅ | ✅ | ❌ |
+| Image merge | ✅ | ✅ | ✅ | ✅ |
+
+Image merge is pure Dart (`dart:ui` canvas drawing, no platform channel) — it's the only feature that runs on Web.
 
 Windows and Linux are not supported.
 
@@ -24,7 +27,7 @@ Windows and Linux are not supported.
 
 ```yaml
 dependencies:
-  pixel_compressor: ^0.0.1
+  pixel_compressor: ^0.1.0
 ```
 
 ```dart
@@ -36,6 +39,7 @@ Every feature is reached through one facade, grouped by concern:
 ```dart
 PixelCompressor.image          // compress a single image / a batch of images
 PixelCompressor.video          // compress a single video / a batch of videos
+PixelCompressor.merge          // combine multiple images into one (pure Dart)
 PixelCompressor.thumbnails     // capture frames from a video
 PixelCompressor.metadata       // read dimensions/duration/codec info
 PixelCompressor.capabilities   // check which codecs this device can encode with
@@ -138,6 +142,48 @@ print('${batch.succeeded.length} ok, ${batch.failed.length} failed, '
 
 `VideoCompressor` has the same `compressBatch`. Each `BatchItemResult` carries either a `CompressionResult` or a `PixelCompressorException` for that item.
 
+## Image merge
+
+Stitch 2+ images together vertically or horizontally. This is pure Dart — no third-party dependencies, no platform channel — built entirely on `dart:ui`'s `Canvas`/`PictureRecorder`, so it works on every platform Flutter runs on, including Web:
+
+```dart
+final merged = await PixelCompressor.merge.combine(
+  [MediaSource.file(a), MediaSource.file(b), MediaSource.file(c)],
+  options: const MergeOptions(
+    direction: MergeDirection.horizontal, // or .vertical (default)
+    spacing: 8,           // gap between images, in output pixels
+    scaleToFit: true,     // scale each image so its cross-axis size matches the others
+  ),
+);
+
+print('${merged.width}x${merged.height}, ${merged.outputSizeBytes} bytes');
+```
+
+Output is **always PNG** — `dart:ui` has no built-in JPEG/WebP/HEIC encoder, and adding one would mean a third-party dependency. For another format or a target file size, pipe the merged PNG through the existing native compressor instead:
+
+```dart
+final jpeg = await PixelCompressor.image.compress(
+  MediaSource.file(merged.outputFile),
+  options: const ImageCompressOptions(format: ImageFormat.jpeg, targetSizeBytes: 500 * 1024),
+);
+```
+
+`MergeOptions.outputPath: null` (the default) writes to a plain OS temp file — unlike the rest of the package, this is **not** tracked by `PixelCompressor.cache`, since that manager is entirely native-backed. Pass an explicit `outputPath` if you need the output cleaned up by your own app.
+
+For a live, on-screen preview instead of (or before) a headless merge, decode sources with `PixelCompressor.merge.decode()` and render a `MergeView`, then screenshot it with a `MergeCaptureController`:
+
+```dart
+final images = [for (final f in files) await PixelCompressor.merge.decode(MediaSource.file(f))];
+final controller = MergeCaptureController();
+
+MergeView(images: images, controller: controller, direction: MergeDirection.vertical);
+
+// Later, e.g. from a button:
+final png = await controller.capturePng();
+```
+
+`MergeView` does not own or dispose the images passed to it — dispose them yourself once you're done.
+
 ## Thumbnails
 
 ```dart
@@ -222,7 +268,7 @@ Other subtypes: `UnsupportedMediaException`, `InvalidMediaException`, `Permissio
 
 ## Example app
 
-The [example app](example) is a full demo of every feature above — pick a real photo or video, tune the options with the same widgets a production app would use (quality slider, format picker, target-size field, trim range, ...), and see the before/after size, ratio, and timing for each run. It has one page per feature: Image, Video, Batch, Thumbnails, Metadata, Capabilities, and Cache. On Android this is showing real compression results today; iOS/macOS run the same UI against the same native engines.
+The [example app](example) is a full demo of every feature above — pick a real photo or video, tune the options with the same widgets a production app would use (quality slider, format picker, target-size field, trim range, ...), and see the before/after size, ratio, and timing for each run. It has one page per feature: Image, Video, Batch, Merge, Thumbnails, Metadata, Capabilities, and Cache. On Android this is showing real compression results today; iOS/macOS run the same UI against the same native engines.
 
 ```sh
 cd example

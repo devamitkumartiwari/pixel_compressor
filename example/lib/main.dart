@@ -4,6 +4,7 @@ import 'pages/batch_page.dart';
 import 'pages/cache_page.dart';
 import 'pages/capabilities_page.dart';
 import 'pages/image_page.dart';
+import 'pages/merge_page.dart';
 import 'pages/metadata_page.dart';
 import 'pages/thumbnails_page.dart';
 import 'pages/video_page.dart';
@@ -47,6 +48,7 @@ class _HomeShellState extends State<_HomeShell> {
     _Destination('Image', Icons.image_outlined, (_) => const ImagePage()),
     _Destination('Video', Icons.videocam_outlined, (_) => const VideoPage()),
     _Destination('Batch', Icons.collections_outlined, (_) => const BatchPage()),
+    _Destination('Merge', Icons.merge_type, (_) => const MergePage()),
     _Destination(
       'Thumbnails',
       Icons.grid_view_outlined,

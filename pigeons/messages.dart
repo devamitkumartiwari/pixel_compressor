@@ -22,11 +22,9 @@ import 'package:pigeon/pigeon.dart';
     dartOptions: DartOptions(),
   ),
 )
-
 // ---------------------------------------------------------------------------
 // Wire enums
 // ---------------------------------------------------------------------------
-
 enum ImageFormatWire { jpeg, png, webp, heic }
 
 enum ExifPolicyWire { keep, strip }

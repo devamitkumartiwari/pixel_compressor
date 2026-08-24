@@ -25,11 +25,14 @@ export 'src/core/enums/compression_stage.dart';
 export 'src/core/enums/exif_policy.dart';
 export 'src/core/enums/image_format.dart';
 export 'src/core/enums/media_type.dart';
+export 'src/core/enums/merge_alignment.dart';
+export 'src/core/enums/merge_direction.dart';
 export 'src/core/enums/quality_preset.dart';
 export 'src/core/enums/task_outcome.dart';
 export 'src/core/enums/video_codec.dart';
 export 'src/core/exceptions/pixel_compressor_exception.dart';
 export 'src/core/image_compressor.dart';
+export 'src/core/image_merger.dart';
 export 'src/core/metadata_reader.dart';
 export 'src/core/models/batch_item_result.dart';
 export 'src/core/models/batch_result.dart';
@@ -38,6 +41,8 @@ export 'src/core/models/compression_result.dart';
 export 'src/core/models/image_compress_options.dart';
 export 'src/core/models/media_info.dart';
 export 'src/core/models/media_source.dart';
+export 'src/core/models/merge_options.dart';
+export 'src/core/models/merge_result.dart';
 export 'src/core/models/progress_event.dart';
 export 'src/core/models/thumbnail_options.dart';
 export 'src/core/models/thumbnail_result.dart';
@@ -45,10 +50,13 @@ export 'src/core/models/video_compress_options.dart';
 export 'src/core/task_manager.dart';
 export 'src/core/thumbnail_generator.dart';
 export 'src/core/video_compressor.dart';
+export 'src/widgets/merge_capture_controller.dart';
+export 'src/widgets/merge_view.dart';
 
 import 'src/core/cache_manager.dart';
 import 'src/core/capability_checker.dart';
 import 'src/core/image_compressor.dart';
+import 'src/core/image_merger.dart';
 import 'src/core/metadata_reader.dart';
 import 'src/core/models/progress_event.dart';
 import 'src/core/task_manager.dart';
@@ -60,6 +68,10 @@ import 'src/platform/progress_hub.dart';
 /// concern:
 ///
 /// * [image] / [video] — compress a file or a batch of files.
+/// * [merge] — combine multiple images into one, headless (PNG bytes/
+///   file) or via a live preview widget + capture controller. Pure Dart
+///   — the only concern here that works on every platform Flutter runs
+///   on, including Web.
 /// * [thumbnails] — capture frames from a video.
 /// * [metadata] — read dimensions/duration/codec info without compressing.
 /// * [capabilities] — check which codecs this device can encode with.
@@ -71,6 +83,7 @@ import 'src/platform/progress_hub.dart';
 abstract final class PixelCompressor {
   static final ImageCompressor image = ImageCompressor.internal();
   static final VideoCompressor video = VideoCompressor.internal();
+  static final ImageMerger merge = ImageMerger.internal();
   static final MetadataReader metadata = MetadataReader.internal();
   static final ThumbnailGenerator thumbnails = ThumbnailGenerator.internal(
     metadata,
