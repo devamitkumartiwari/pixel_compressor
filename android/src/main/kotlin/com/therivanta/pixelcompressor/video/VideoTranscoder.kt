@@ -14,11 +14,14 @@ import kotlinx.coroutines.ensureActive
 /**
  * Video-track transcode pipeline: `MediaExtractor` (compressed source
  * samples) -> `MediaCodec` decoder (writing to a `SurfaceTexture`) -> GPU
- * scale (via `glViewport`, see [GlUtil]) -> `MediaCodec` encoder (reading
- * from its own input `Surface`). Trim is applied by seeking the extractor
- * to `trimStartUs` and dropping/rewriting sample PTS; rotation is *not*
- * applied here — [VideoEngine] applies it as a `MediaMuxer` orientation
- * hint instead, per the plan's "metadata hint, no pixel pass" design.
+ * scale + rotate (via `glViewport` and a position-matrix rotation, see
+ * [GlUtil]) -> `MediaCodec` encoder (reading from its own input `Surface`).
+ * Trim is applied by seeking the extractor to `trimStartUs` and
+ * dropping/rewriting sample PTS. Rotation is baked directly into the
+ * encoded pixels here (rather than left as a `MediaMuxer` orientation
+ * hint) because many server-side players/transcoders ignore that hint —
+ * [targetWidth]/[targetHeight] must already be the caller's post-rotation
+ * (swapped, for 90/270) dimensions; see [VideoEngine].
  *
  * Encoded samples are buffered in memory rather than streamed straight to
  * the muxer, because the muxer can't have tracks added (and therefore
@@ -72,6 +75,7 @@ internal class VideoTranscoder {
     bitrateBps: Long,
     trimStartUs: Long,
     trimEndUs: Long?,
+    rotationDegrees: Int,
     onProgress: (currentPtsUs: Long) -> Unit,
   ): Result {
     val extractor = MediaExtractor()
@@ -174,7 +178,7 @@ internal class VideoTranscoder {
               if (doRender) {
                 frameWaiter.await()
                 surfaceTexture.updateTexImage()
-                renderer.drawFrame(surfaceTexture, targetWidth, targetHeight)
+                renderer.drawFrame(surfaceTexture, targetWidth, targetHeight, rotationDegrees)
                 windowSurface.setPresentationTime(bufferInfo.presentationTimeUs * 1000)
                 windowSurface.swapBuffers()
                 onProgress(bufferInfo.presentationTimeUs)

@@ -47,7 +47,7 @@ final class ImageEngine {
       (CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]) ?? [:]
     let sourceOrientation = (sourceProperties[kCGImagePropertyOrientation] as? Int) ?? 1
     let sourceOrientationDegrees = RotationMath.degrees(forExifOrientation: sourceOrientation)
-    let requestedRotation = RotationMath.normalize(Int(request.rotationDegrees))
+    let requestedRotation = try RotationMath.requireCardinal(Int(request.rotationDegrees))
 
     let originalSize =
       (try? FileManager.default.attributesOfItem(atPath: request.sourcePath)[.size] as? Int64) ?? 0

@@ -135,13 +135,31 @@ internal class TextureRenderer {
       0f, 1f,
       1f, 1f,
     )
+
+    /**
+     * Rigid clockwise rotation applied to [aPosition] (not the texture
+     * coordinates), so it rotates the already-correctly-sampled frame as a
+     * whole rather than depending on [SurfaceTexture]'s own flip/crop
+     * transform. Combined with swapping the encoder's target width/height
+     * for 90/270 (done by the caller), this bakes the source's rotation
+     * hint directly into the encoded pixels instead of leaving it as an
+     * MP4 orientation-hint for the player to apply — see [rotationMatrixForDegrees].
+     */
+    fun rotationMatrixForDegrees(degrees: Int): FloatArray = when (((degrees % 360) + 360) % 360) {
+      90 -> floatArrayOf(0f, -1f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f)
+      180 -> floatArrayOf(-1f, 0f, 0f, 0f, 0f, -1f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f)
+      270 -> floatArrayOf(0f, 1f, 0f, 0f, -1f, 0f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f)
+      else -> FloatArray(16).also { Matrix.setIdentityM(it, 0) }
+    }
+
     private const val VERTEX_SHADER = """
       attribute vec4 aPosition;
       attribute vec4 aTextureCoord;
       uniform mat4 uTexMatrix;
+      uniform mat4 uPositionMatrix;
       varying vec2 vTextureCoord;
       void main() {
-        gl_Position = aPosition;
+        gl_Position = uPositionMatrix * aPosition;
         vTextureCoord = (uTexMatrix * aTextureCoord).xy;
       }
     """
@@ -167,7 +185,7 @@ internal class TextureRenderer {
 
   val externalTextureId: Int get() = textureId
 
-  fun drawFrame(surfaceTexture: SurfaceTexture, viewportWidth: Int, viewportHeight: Int) {
+  fun drawFrame(surfaceTexture: SurfaceTexture, viewportWidth: Int, viewportHeight: Int, rotationDegrees: Int = 0) {
     surfaceTexture.getTransformMatrix(texMatrix)
     GLES20.glViewport(0, 0, viewportWidth, viewportHeight)
     GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -188,6 +206,9 @@ internal class TextureRenderer {
 
     val matrixHandle = GLES20.glGetUniformLocation(program, "uTexMatrix")
     GLES20.glUniformMatrix4fv(matrixHandle, 1, false, texMatrix, 0)
+
+    val positionMatrixHandle = GLES20.glGetUniformLocation(program, "uPositionMatrix")
+    GLES20.glUniformMatrix4fv(positionMatrixHandle, 1, false, rotationMatrixForDegrees(rotationDegrees), 0)
 
     GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
     checkGlError("glDrawArrays")
@@ -264,10 +285,3 @@ internal class TextureRenderer {
     }
   }
 }
-
-/** Unused placeholder kept for readability of matrix-based rotation should
- * a future revision need pixel-level rotation; current implementation
- * always applies rotation via `MediaMuxer.setOrientationHint` only, per
- * the plan's "metadata hint, no pixel pass" design.
- */
-internal fun identityMatrix(): FloatArray = FloatArray(16).also { Matrix.setIdentityM(it, 0) }

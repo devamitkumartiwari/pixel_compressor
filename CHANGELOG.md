@@ -1,3 +1,19 @@
+## 0.2.0
+
+* Fixed Android video rotation: rotation was previously written only as an
+  MP4 orientation-hint metadata flag (`MediaMuxer.setOrientationHint`),
+  which many server-side players and transcoders ignore, producing
+  rotated/upside-down output even though on-device playback (which honors
+  the hint) looked correct. Rotation is now baked directly into the
+  encoded pixels via a GPU render pass, matching the approach already used
+  on iOS/macOS.
+* Hardened `rotationDegrees` validation (image and video, Android and
+  iOS): the public API's 0/90/180/270 contract was previously enforced
+  only by a Dart `assert`, which is compiled out of release builds. An
+  out-of-range value now throws `InvalidMediaException` on the native
+  side instead of silently producing wrong (video) or clipped (image)
+  output.
+
 ## 0.1.0
 
 * Added `PixelCompressor.merge` — combine multiple images into one, stitched

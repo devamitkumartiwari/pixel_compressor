@@ -170,6 +170,8 @@ class VideoEngine(
 
     val resultFile: File
 
+    val encodedBaseDims = swapForRotation(baseDims.width, baseDims.height, totalRotation)
+
     if (request.targetSizeBytes == null) {
       val scratch = File.createTempFile("pc_video_attempt", ".mp4", scratchDir)
       runAttempt(
@@ -178,8 +180,8 @@ class VideoEngine(
         videoTrackIndex = videoTrackIndex,
         videoFormat = videoFormat,
         outputMime = resolvedCodec.mime,
-        width = baseDims.width,
-        height = baseDims.height,
+        width = encodedBaseDims.first,
+        height = encodedBaseDims.second,
         fps = fps,
         videoBitrateBps = videoBitrateBps,
         useAudio = useAudio,
@@ -215,6 +217,7 @@ class VideoEngine(
         currentCoroutineContext().ensureActive()
         val dims = state.maxEdgePx?.let { VideoBitrateMath.fitLongestEdge(baseDims.width, baseDims.height, it) }
           ?: baseDims
+        val encodedDims = swapForRotation(dims.width, dims.height, totalRotation)
         val scratch = File.createTempFile("pc_video_attempt${attempt}_", ".mp4", scratchDir)
         val rangeStart = 10.0 + (attempt - 1).toDouble() / maxAttempts * 80.0
         val rangeEnd = 10.0 + attempt.toDouble() / maxAttempts * 80.0
@@ -224,8 +227,8 @@ class VideoEngine(
           videoTrackIndex = videoTrackIndex,
           videoFormat = videoFormat,
           outputMime = resolvedCodec.mime,
-          width = dims.width,
-          height = dims.height,
+          width = encodedDims.first,
+          height = encodedDims.second,
           fps = fps,
           videoBitrateBps = state.bitrateBps,
           useAudio = useAudio,
@@ -322,6 +325,7 @@ class VideoEngine(
       bitrateBps = videoBitrateBps,
       trimStartUs = trimStartUs,
       trimEndUs = trimEndUs,
+      rotationDegrees = rotationDegrees,
     ) { pts ->
       val relativePts = (pts - trimStartUs).coerceAtLeast(0)
       val fraction = (relativePts.toDouble() / progressDurationUs).coerceIn(0.0, 1.0)
@@ -337,20 +341,22 @@ class VideoEngine(
 
     currentCoroutineContext().ensureActive()
     progressReporter.onProgress(taskId, CompressionStageWire.MUXING, progressEnd, note = attemptNote)
-    muxToFile(videoResult, audioResult, rotationDegrees, outputFile)
+    muxToFile(videoResult, audioResult, outputFile)
   }
 
   private fun muxToFile(
     videoResult: VideoTranscoder.Result,
     audioResult: AudioTranscoder.Result?,
-    rotationDegrees: Int,
     outputFile: File,
   ) {
     val muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
     try {
       val videoTrackIdx = muxer.addTrack(videoResult.format)
       val audioTrackIdx = audioResult?.let { muxer.addTrack(it.format) }
-      muxer.setOrientationHint(rotationDegrees)
+      // Rotation is now baked directly into the encoded pixels (see
+      // VideoTranscoder/GlUtil), so no orientation hint is needed — a
+      // player/transcoder that ignores this metadata already renders the
+      // frame correctly.
       muxer.start()
 
       val videoSamples = videoResult.samples
@@ -387,6 +393,15 @@ class VideoEngine(
     }
     muxer.writeSampleData(trackIndex, buffer, info)
   }
+
+  /**
+   * Rotation is baked into the encoded pixels (see [VideoTranscoder]), so
+   * for a 90/270 bake the encoder's target frame is portrait/landscape-swapped
+   * relative to [width]/[height], which are expressed in the source's raw
+   * (pre-rotation) orientation.
+   */
+  private fun swapForRotation(width: Int, height: Int, rotationDegrees: Int): Pair<Int, Int> =
+    if (rotationDegrees == 90 || rotationDegrees == 270) height to width else width to height
 
   private fun mapWriteError(e: IOException): Throwable {
     val message = e.message ?: ""

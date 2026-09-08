@@ -69,7 +69,7 @@ final class VideoEngine {
       throw PixelCompressorError.invalidMedia("trimEndMs must be after trimStartMs")
     }
 
-    let requestedRotation = RotationMath.normalize(Int(request.rotationDegrees))
+    let requestedRotation = try RotationMath.requireCardinal(Int(request.rotationDegrees))
     let (displayWidth, displayHeight) = displaySize(
       track: videoTrack, extraDegrees: requestedRotation)
     let sourceFps = videoTrack.nominalFrameRate > 0 ? Double(videoTrack.nominalFrameRate) : 30.0

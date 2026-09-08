@@ -16,6 +16,21 @@ enum RotationMath {
     normalize(sourceDegrees + requestedDegrees)
   }
 
+  /// Validates that a caller-supplied rotation is one of 0/90/180/270 —
+  /// the only values the public Dart API documents and `assert()`s, an
+  /// assert that's compiled out of release builds, so this is the actual
+  /// enforcement. Both the image (canvas dimension swap in
+  /// `ImageFormatCodec.rotate`) and video (`AVMutableVideoComposition`
+  /// render-size swap in `VideoEngine`) pipelines only handle rotation in
+  /// 90-degree steps and produce a clipped/wrong result for anything else.
+  static func requireCardinal(_ degrees: Int) throws -> Int {
+    guard degrees == 0 || degrees == 90 || degrees == 180 || degrees == 270 else {
+      throw PixelCompressorError.invalidMedia(
+        "rotationDegrees must be one of 0, 90, 180, 270, got \(degrees)")
+    }
+    return degrees
+  }
+
   static func normalize(_ degrees: Int) -> Int {
     let mod = degrees % 360
     return mod < 0 ? mod + 360 : mod

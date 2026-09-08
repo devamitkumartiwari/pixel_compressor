@@ -2,7 +2,7 @@ name: pixel_compressor
 description: >
   Native image and video compression for Flutter — resizing, format
   conversion, thumbnails, metadata, and target-size compression. No FFmpeg.
-version: 0.1.0
+version: 0.2.0
 homepage: https://github.com/devamitkumartiwari/pixel_compressor
 repository: https://github.com/devamitkumartiwari/pixel_compressor
 issue_tracker: https://github.com/devamitkumartiwari/pixel_compressor/issues

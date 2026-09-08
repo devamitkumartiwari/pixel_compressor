@@ -27,7 +27,7 @@ Windows and Linux are not supported.
 
 ```yaml
 dependencies:
-  pixel_compressor: ^0.1.0
+  pixel_compressor: ^0.2.0
 ```
 
 ```dart
