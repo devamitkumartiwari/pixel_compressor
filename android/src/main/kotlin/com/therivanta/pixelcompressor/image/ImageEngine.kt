@@ -74,7 +74,11 @@ class ImageEngine(
       )
     }
 
-    val sourceOrientationDegrees = ExifSupport.readOrientationDegrees(request.sourcePath)
+    val sourceOrientationDegrees = if (request.autoCorrectOrientation) {
+      ExifSupport.readOrientationDegrees(request.sourcePath)
+    } else {
+      0
+    }
     val totalRotation = RotationMath.combineRotation(sourceOrientationDegrees, request.rotationDegrees.toInt())
     val requestedMaxWidth = request.maxWidth?.toInt()
     val requestedMaxHeight = request.maxHeight?.toInt()

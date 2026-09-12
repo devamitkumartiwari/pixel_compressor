@@ -41,6 +41,8 @@ dependencies:
   # Lets the demo pages pick a real image/video from the device to feed
   # into PixelCompressor.
   image_picker: ^1.1.2
+  video_player: ^2.14.0
+  google_fonts: ^8.2.1
 
 dev_dependencies:
   flutter_test:

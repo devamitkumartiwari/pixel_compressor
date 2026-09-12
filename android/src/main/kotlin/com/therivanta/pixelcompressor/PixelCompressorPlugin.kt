@@ -40,7 +40,6 @@ class PixelCompressorPlugin :
   ThumbnailHostApi,
   MetadataHostApi,
   CapabilityHostApi,
-  CacheHostApi,
   TaskHostApi {
 
   private var pluginScope: CoroutineScope? = null
@@ -80,7 +79,6 @@ class PixelCompressorPlugin :
     ThumbnailHostApi.setUp(messenger, this)
     MetadataHostApi.setUp(messenger, this)
     CapabilityHostApi.setUp(messenger, this)
-    CacheHostApi.setUp(messenger, this)
     TaskHostApi.setUp(messenger, this)
   }
 
@@ -91,7 +89,6 @@ class PixelCompressorPlugin :
     ThumbnailHostApi.setUp(messenger, null)
     MetadataHostApi.setUp(messenger, null)
     CapabilityHostApi.setUp(messenger, null)
-    CacheHostApi.setUp(messenger, null)
     TaskHostApi.setUp(messenger, null)
 
     taskRegistry?.cancelAll()
@@ -140,7 +137,7 @@ class PixelCompressorPlugin :
   }
 
   // ---------------------------------------------------------------------
-  // MetadataHostApi / CapabilityHostApi / CacheHostApi / TaskHostApi —
+  // MetadataHostApi / CapabilityHostApi / TaskHostApi —
   // quick, non-cancellable, non-progress-reporting calls. Still
   // dispatched off the calling thread and replied to on the main thread,
   // per the shared threading model.
@@ -155,14 +152,6 @@ class PixelCompressorPlugin :
 
   override fun capabilities(callback: (Result<CapabilitiesReportMessage>) -> Unit) {
     runSimple(callback) { capabilityProbe!!.capabilities() }
-  }
-
-  override fun clearCache(callback: (Result<Unit>) -> Unit) {
-    runSimple(callback) { cacheManager!!.clear() }
-  }
-
-  override fun getCacheSize(callback: (Result<Long>) -> Unit) {
-    runSimple(callback) { cacheManager!!.size() }
   }
 
   override fun cancel(taskId: String, callback: (Result<Boolean>) -> Unit) {

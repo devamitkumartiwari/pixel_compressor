@@ -1,3 +1,60 @@
+## Unreleased
+
+* Fixed the actual root cause of Android video rotation coming out wrong
+  (superseding the 0.2.0 fix below, which addressed a different symptom of
+  the same underlying bug): since Android 5.0, `MediaCodec` auto-applies a
+  source video's own rotation hint to the decoder's output `Surface`
+  transform whenever it decodes to a `Surface` — a platform behavior this
+  plugin never accounted for. The result was rotation being applied twice
+  (once by the platform during decode, once by this plugin's own
+  handling), most visibly wrong at 90°/270° source rotations. Fixed by
+  zeroing the source format's rotation hint before configuring the
+  decoder; the combined source + requested rotation is now carried
+  forward as a standard `MediaMuxer.setOrientationHint()` container hint
+  (the same mechanism camera apps themselves use) rather than being baked
+  into pixels via a GPU render pass.
+* Added `MediaSource.bytes()` and `MediaSource.asset()` — compress
+  in-memory bytes or a bundled Flutter asset directly, no temp `File`
+  management required from the caller. Works alongside the existing
+  `MediaSource.file()`/`.path()`.
+* Added `ImageCompressOptions.returnBytes` / `VideoCompressOptions.returnBytes`
+  — also read the compressed output back into `CompressionResult.outputBytes`
+  without a separate disk read.
+* Added `ImageCompressOptions.deleteSourceOnSuccess` /
+  `VideoCompressOptions.deleteSourceOnSuccess` — delete the source file
+  once compression succeeds.
+* Added `ImageCompressOptions.autoCorrectOrientation` (default `true`) —
+  bakes the source's EXIF orientation upright before compressing; set
+  `false` to keep the source's raw, uncorrected pixel orientation.
+* Added Web support for image compression (JPEG/PNG/WebP, via
+  `<canvas>`/`OffscreenCanvas`, no external JS libraries) and for
+  `PixelCompressor.merge` alongside it — `MediaSource.bytes`/`.asset` only,
+  since a browser has no real filesystem path to compress from.
+* JPEG and PNG compression now run entirely in Dart (via `package:image`)
+  on Android/iOS/macOS/Web instead of round-tripping through a platform
+  channel. WebP and HEIC are unchanged (native on Android/iOS/macOS; WebP
+  also works on Web via canvas, HEIC cannot since no browser can encode
+  it).
+* `PixelCompressor.cache` is now implemented entirely in Dart (via
+  `path_provider`) instead of a platform channel call — same cache
+  directory roots as before (`getApplicationCacheDirectory()` resolves to
+  the same OS cache root the native side already used), so existing
+  cached files are still accounted for correctly.
+* `PixelCompressor.tasks` is now backed entirely by Dart-side bookkeeping.
+  `cancel()`/`activeTaskIds()` no longer need a platform channel round-trip
+  for tasks Dart itself is running, and cancellation is now real (not a
+  no-op) for the pure-Dart JPEG/PNG image engine — a cancelled compress
+  now actually stops mid-encode instead of finishing anyway.
+* `PixelCompressor.metadata` now reads JPEG/PNG dimensions and EXIF
+  presence directly in Dart from just the file header, without a native
+  call — falls back to the native reader automatically for any other
+  format or on any parse ambiguity, so behavior is unchanged for
+  WebP/HEIC/video sources.
+* Video trim range (`trimStart`/`trimEnd`) is now validated on the Dart
+  side before any platform call — an invalid range (`trimEnd` at or before
+  `trimStart`) throws `InvalidMediaException` immediately instead of
+  failing partway through native decoding.
+
 ## 0.2.0
 
 * Fixed Android video rotation: rotation was previously written only as an

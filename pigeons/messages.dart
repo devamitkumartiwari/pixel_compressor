@@ -64,6 +64,7 @@ class ImageCompressRequest {
     required this.quality,
     required this.rotationDegrees,
     required this.exifPolicy,
+    required this.autoCorrectOrientation,
     this.outputPath,
     this.format,
     this.maxWidth,
@@ -81,6 +82,11 @@ class ImageCompressRequest {
   final int rotationDegrees;
   final ExifPolicyWire exifPolicy;
   final int? targetSizeBytes;
+
+  /// Only consulted by the WebP/HEIC native engines — JPEG/PNG compression
+  /// runs entirely in Dart and applies this itself before ever reaching a
+  /// platform channel.
+  final bool autoCorrectOrientation;
 }
 
 class VideoCompressRequest {
@@ -306,15 +312,6 @@ abstract class MetadataHostApi {
 abstract class CapabilityHostApi {
   @async
   CapabilitiesReportMessage capabilities();
-}
-
-@HostApi()
-abstract class CacheHostApi {
-  @async
-  void clearCache();
-
-  @async
-  int getCacheSize();
 }
 
 @HostApi()

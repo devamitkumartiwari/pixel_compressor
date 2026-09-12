@@ -69,9 +69,8 @@ import 'src/platform/progress_hub.dart';
 ///
 /// * [image] / [video] — compress a file or a batch of files.
 /// * [merge] — combine multiple images into one, headless (PNG bytes/
-///   file) or via a live preview widget + capture controller. Pure Dart
-///   — the only concern here that works on every platform Flutter runs
-///   on, including Web.
+///   file) or via a live preview widget + capture controller. Pure Dart,
+///   so — like JPEG/PNG/WebP image compression — it works on Web too.
 /// * [thumbnails] — capture frames from a video.
 /// * [metadata] — read dimensions/duration/codec info without compressing.
 /// * [capabilities] — check which codecs this device can encode with.

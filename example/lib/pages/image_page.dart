@@ -6,11 +6,18 @@ import 'package:pixel_compressor/pixel_compressor.dart';
 
 import '../utils/format.dart';
 import '../widgets/error_banner.dart';
+import '../widgets/media_source_sheet.dart';
 import '../widgets/section_card.dart';
 import '../widgets/size_comparison_bar.dart';
+import '../widgets/zoomable_image_preview.dart';
 
 class ImagePage extends StatefulWidget {
-  const ImagePage({super.key});
+  const ImagePage({super.key, this.initialFile});
+
+  /// A file already picked (e.g. by the home page's intro/picker step) —
+  /// when set, this is loaded immediately instead of waiting for the user
+  /// to tap "Pick an image".
+  final File? initialFile;
 
   @override
   State<ImagePage> createState() => _ImagePageState();
@@ -34,6 +41,15 @@ class _ImagePageState extends State<ImagePage> {
   Object? _error;
 
   @override
+  void initState() {
+    super.initState();
+    final file = widget.initialFile;
+    if (file != null) {
+      _loadFile(file);
+    }
+  }
+
+  @override
   void dispose() {
     _maxWidthController.dispose();
     _maxHeightController.dispose();
@@ -41,10 +57,7 @@ class _ImagePageState extends State<ImagePage> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (picked == null) return;
-    final file = File(picked.path);
+  Future<void> _loadFile(File file) async {
     final size = await file.length();
     setState(() {
       _sourceFile = file;
@@ -62,6 +75,17 @@ class _ImagePageState extends State<ImagePage> {
       // Metadata is a nice-to-have here; the picked file's size on disk is
       // already shown, so a metadata failure doesn't block compressing it.
     }
+  }
+
+  Future<void> _pickImage() async {
+    final source = await showMediaSourceSheet(
+      context,
+      captureLabel: 'Take a photo',
+    );
+    if (source == null) return;
+    final picked = await ImagePicker().pickImage(source: source);
+    if (picked == null) return;
+    await _loadFile(File(picked.path));
   }
 
   Future<void> _compress() async {
@@ -114,15 +138,7 @@ class _ImagePageState extends State<ImagePage> {
           icon: Icons.image_outlined,
           children: [
             if (file != null) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.file(
-                  file,
-                  height: 180,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                ),
-              ),
+              ZoomableImagePreview(file: file),
               const SizedBox(height: 8),
               Text('Size on disk: ${formatBytes(_originalSizeBytes ?? 0)}'),
               if (_sourceInfo != null)
@@ -133,7 +149,7 @@ class _ImagePageState extends State<ImagePage> {
             ],
             OutlinedButton.icon(
               onPressed: _pickImage,
-              icon: const Icon(Icons.photo_library_outlined),
+              icon: const Icon(Icons.add_photo_alternate_outlined),
               label: Text(
                 file == null ? 'Pick an image' : 'Pick a different image',
               ),
@@ -255,6 +271,11 @@ class _ImagePageState extends State<ImagePage> {
             title: 'Result',
             icon: Icons.check_circle_outline,
             children: [
+              ZoomableImagePreview(
+                key: ValueKey(_result!.outputPath),
+                file: _result!.outputFile,
+              ),
+              const SizedBox(height: 12),
               SizeComparisonBar(
                 originalBytes: _result!.originalSizeBytes,
                 outputBytes: _result!.outputSizeBytes,

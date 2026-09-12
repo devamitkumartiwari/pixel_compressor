@@ -1,22 +1,49 @@
 # pixel_compressor
 
+[![pub package](https://img.shields.io/pub/v/pixel_compressor.svg)](https://pub.dev/packages/pixel_compressor)
+[![license: MIT](https://img.shields.io/github/license/devamitkumartiwari/pixel_compressor)](LICENSE)
+
 Native **image and video** compression for Flutter — resizing, format conversion, rotation and EXIF handling, target-size compression, thumbnail generation, media metadata, batch processing with progress and cancellation, capability detection, and cache management. Built entirely on platform codecs (Android `MediaCodec`/`MediaMuxer`, iOS/macOS `AVFoundation`/`VideoToolbox`/`ImageIO`) — no FFmpeg, no heavy third-party native dependencies.
 
 All processing happens on-device. Nothing is ever uploaded anywhere.
 
-> **Project status: early.** The public Dart API is stable, and native compression is implemented on Android, iOS, and macOS — real image/video compression, not a stub. Android has been verified end to end on real hardware (image and video compression, capability detection, and cache management all confirmed against real files). iOS and macOS build and run cleanly against the same engines but haven't yet had a full on-device interactive pass. Web has no implementation yet. Track progress in [CHANGELOG.md](CHANGELOG.md).
+> **Project status: early.** The public Dart API is stable, and native compression is implemented on Android, iOS, and macOS — real image/video compression, not a stub. Android has been verified end to end on real hardware (image and video compression, capability detection, and cache management all confirmed against real files). iOS and macOS build and run cleanly against the same engines but haven't yet had a full on-device interactive pass. Web supports image compression (JPEG/PNG/WebP, via canvas) and image merge; video, thumbnails, metadata, and capabilities are not available on Web. Track progress in [CHANGELOG.md](CHANGELOG.md).
+
+## See it in action
+
+Captured from the [example app](example) running on a real Android device.
+
+<table>
+<tr>
+<th>Image compression</th>
+<th>Video compression</th>
+<th>Image merge</th>
+</tr>
+<tr>
+<td><img src="https://raw.githubusercontent.com/devamitkumartiwari/pixel_compressor/main/art/image_compression.gif" width="260"/></td>
+<td><img src="https://raw.githubusercontent.com/devamitkumartiwari/pixel_compressor/main/art/video_compression.gif" width="260"/></td>
+<td><img src="https://raw.githubusercontent.com/devamitkumartiwari/pixel_compressor/main/art/merge.gif" width="260"/></td>
+</tr>
+<tr>
+<td>958 KB → 441 KB (54% smaller) in ~1.2s</td>
+<td>11.7 MB → 1.37 MB (88% smaller) via hardware HEVC</td>
+<td>Stitches N images into one, pure Dart — no native call</td>
+</tr>
+</table>
 
 ## Platform support
 
 | | Android | iOS | macOS | Web |
 |---|---|---|---|---|
-| Image compression | ✅ | ✅ | ✅ | ❌ |
+| Image compression | ✅ | ✅ | ✅ | ✅¹ |
 | Video compression | ✅ | ✅ | ✅ | ❌ |
 | Thumbnails | ✅ | ✅ | ✅ | ❌ |
 | Metadata | ✅ | ✅ | ✅ | ❌ |
 | Image merge | ✅ | ✅ | ✅ | ✅ |
 
-Image merge is pure Dart (`dart:ui` canvas drawing, no platform channel) — it's the only feature that runs on Web.
+¹ Web image compression is JPEG/PNG/WebP only (no HEIC — no browser can encode it), and only from `MediaSource.bytes`/`.asset` (no real filesystem path in a browser). It's implemented with `<canvas>`/`OffscreenCanvas`, no external JS libraries.
+
+Image merge is pure Dart (`dart:ui` canvas drawing, no platform channel) and JPEG/PNG/WebP image compression on Web runs on the browser's own canvas APIs — everything else in the table above is native-only.
 
 Windows and Linux are not supported.
 
@@ -60,7 +87,16 @@ print('${result.originalSizeBytes} -> ${result.outputSizeBytes} bytes '
     '(${result.savedPercent.toStringAsFixed(1)}% smaller)');
 ```
 
-`MediaSource.file(File)` and `MediaSource.path(String)` are the two supported inputs today — in-memory byte compression is planned for a follow-up release.
+Four ways to point at a source, all accepted anywhere a `MediaSource` is expected:
+
+```dart
+MediaSource.file(file)                    // a File already resolved by the caller
+MediaSource.path(path)                    // a filesystem path
+MediaSource.bytes(bytes)                  // in-memory bytes — no temp File to manage yourself
+MediaSource.asset('assets/sample.jpg')    // a Flutter asset bundled with the app
+```
+
+On Web, only `.bytes`/`.asset` are usable — there's no real filesystem to point a path at.
 
 ## Image compression
 
@@ -74,13 +110,18 @@ final result = await PixelCompressor.image.compress(
     format: ImageFormat.webp,   // null keeps the source's own format
     exifPolicy: ExifPolicy.strip, // strip (default) or keep, GPS-safe by default
     rotationDegrees: 0,      // 0/90/180/270, applied before compression
+    autoCorrectOrientation: true, // bake the source's EXIF orientation upright (default)
     targetSizeBytes: null,   // see "Target-size compression" below
+    deleteSourceOnSuccess: false, // delete the source file once compression succeeds
+    returnBytes: false,      // also read the output back into CompressionResult.outputBytes
   ),
   onProgress: (event) => print('${event.stage} ${event.percent}%'),
 );
 ```
 
-`CompressionResult` gives you everything needed to show a before/after: `originalSizeBytes`, `outputSizeBytes`, `savedBytes`, `savedPercent`, `compressionRatio`, `duration`, `codec`, `format`, and `outputFile`/`outputPath`.
+`CompressionResult` gives you everything needed to show a before/after: `originalSizeBytes`, `outputSizeBytes`, `savedBytes`, `savedPercent`, `compressionRatio`, `duration`, `codec`, `format`, and `outputFile`/`outputPath` (plus `outputBytes` when `returnBytes: true`).
+
+JPEG and PNG compression run entirely in Dart (via `package:image`) on Android/iOS/macOS/Web — no platform channel round-trip. WebP and HEIC still go through the native encoder on Android/iOS/macOS (WebP also works on Web, via canvas).
 
 ## Video compression
 
@@ -168,7 +209,7 @@ final jpeg = await PixelCompressor.image.compress(
 );
 ```
 
-`MergeOptions.outputPath: null` (the default) writes to a plain OS temp file — unlike the rest of the package, this is **not** tracked by `PixelCompressor.cache`, since that manager is entirely native-backed. Pass an explicit `outputPath` if you need the output cleaned up by your own app.
+`MergeOptions.outputPath: null` (the default) writes to a plain OS temp file — unlike the rest of the package, this is **not** tracked by `PixelCompressor.cache`. Pass an explicit `outputPath` if you need the output cleaned up by your own app.
 
 For a live, on-screen preview instead of (or before) a headless merge, decode sources with `PixelCompressor.merge.decode()` and render a `MergeView`, then screenshot it with a `MergeCaptureController`:
 
@@ -213,6 +254,8 @@ if (info.mediaType == MediaType.video) {
 }
 ```
 
+JPEG/PNG sources are read directly in Dart from just the file header (dimensions, EXIF presence, orientation) — no native call. Any other format, or a parse ambiguity, falls back to the native reader automatically.
+
 ## Capabilities
 
 Check what a device can actually encode before you rely on it — e.g. before defaulting to HEVC or WebP:
@@ -235,6 +278,8 @@ final bytesUsed = await PixelCompressor.cache.size();
 await PixelCompressor.cache.clear();
 ```
 
+Implemented entirely in Dart via `path_provider` — no platform channel call.
+
 ## Progress and cancellation
 
 Every `compress()` call accepts an `onProgress` callback scoped to that one task. For a single stream across every concurrent task instead, use `PixelCompressor.progressStream` and filter by `event.taskId`.
@@ -246,7 +291,7 @@ await PixelCompressor.tasks.cancel(taskId);   // cancels one task
 await PixelCompressor.tasks.cancelAll();      // cancels everything in flight
 ```
 
-A cancelled task's `compress()` Future completes with `CompressionCancelledException`.
+A cancelled task's `compress()` Future completes with `CompressionCancelledException`. Cancellation is real for every task, including the pure-Dart JPEG/PNG image engine — it stops mid-encode rather than finishing anyway.
 
 ## Error handling
 

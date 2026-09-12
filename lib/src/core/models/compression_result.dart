@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import '../../platform/messages.g.dart';
 
@@ -12,6 +13,7 @@ class CompressionResult {
     required this.duration,
     required this.codec,
     required this.format,
+    this.outputBytes,
   });
 
   factory CompressionResult.fromMessage(CompressionResultMessage message) =>
@@ -24,6 +26,20 @@ class CompressionResult {
         codec: message.codec,
         format: message.format,
       );
+
+  /// A copy of this result with [outputBytes] set — used to attach bytes
+  /// read back from [outputPath] after the fact, when requested via
+  /// `returnBytes`.
+  CompressionResult withOutputBytes(Uint8List bytes) => CompressionResult(
+    outputPath: outputPath,
+    originalSizeBytes: originalSizeBytes,
+    outputSizeBytes: outputSizeBytes,
+    compressionRatio: compressionRatio,
+    duration: duration,
+    codec: codec,
+    format: format,
+    outputBytes: bytes,
+  );
 
   /// Where the compressed file was written.
   final String outputPath;
@@ -42,6 +58,11 @@ class CompressionResult {
 
   /// The output format/container actually used.
   final String format;
+
+  /// The compressed output's bytes, present only when requested via
+  /// `returnBytes` on the compress options. The output file is still
+  /// written to disk regardless.
+  final Uint8List? outputBytes;
 
   File get outputFile => File(outputPath);
 

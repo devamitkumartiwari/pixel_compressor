@@ -322,7 +322,13 @@ data class ImageCompressRequest (
   val maxHeight: Long? = null,
   val rotationDegrees: Long,
   val exifPolicy: ExifPolicyWire,
-  val targetSizeBytes: Long? = null
+  val targetSizeBytes: Long? = null,
+  /**
+   * Only consulted by the WebP/HEIC native engines — JPEG/PNG compression
+   * runs entirely in Dart and applies this itself before ever reaching a
+   * platform channel.
+   */
+  val autoCorrectOrientation: Boolean
 )
  {
   companion object {
@@ -337,7 +343,8 @@ data class ImageCompressRequest (
       val rotationDegrees = pigeonVar_list[7] as Long
       val exifPolicy = pigeonVar_list[8] as ExifPolicyWire
       val targetSizeBytes = pigeonVar_list[9] as Long?
-      return ImageCompressRequest(taskId, sourcePath, outputPath, format, quality, maxWidth, maxHeight, rotationDegrees, exifPolicy, targetSizeBytes)
+      val autoCorrectOrientation = pigeonVar_list[10] as Boolean
+      return ImageCompressRequest(taskId, sourcePath, outputPath, format, quality, maxWidth, maxHeight, rotationDegrees, exifPolicy, targetSizeBytes, autoCorrectOrientation)
     }
   }
   fun toList(): List<Any?> {
@@ -352,6 +359,7 @@ data class ImageCompressRequest (
       rotationDegrees,
       exifPolicy,
       targetSizeBytes,
+      autoCorrectOrientation,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -362,7 +370,7 @@ data class ImageCompressRequest (
       return true
     }
     val other = other as ImageCompressRequest
-    return MessagesPigeonUtils.deepEquals(this.taskId, other.taskId) && MessagesPigeonUtils.deepEquals(this.sourcePath, other.sourcePath) && MessagesPigeonUtils.deepEquals(this.outputPath, other.outputPath) && MessagesPigeonUtils.deepEquals(this.format, other.format) && MessagesPigeonUtils.deepEquals(this.quality, other.quality) && MessagesPigeonUtils.deepEquals(this.maxWidth, other.maxWidth) && MessagesPigeonUtils.deepEquals(this.maxHeight, other.maxHeight) && MessagesPigeonUtils.deepEquals(this.rotationDegrees, other.rotationDegrees) && MessagesPigeonUtils.deepEquals(this.exifPolicy, other.exifPolicy) && MessagesPigeonUtils.deepEquals(this.targetSizeBytes, other.targetSizeBytes)
+    return MessagesPigeonUtils.deepEquals(this.taskId, other.taskId) && MessagesPigeonUtils.deepEquals(this.sourcePath, other.sourcePath) && MessagesPigeonUtils.deepEquals(this.outputPath, other.outputPath) && MessagesPigeonUtils.deepEquals(this.format, other.format) && MessagesPigeonUtils.deepEquals(this.quality, other.quality) && MessagesPigeonUtils.deepEquals(this.maxWidth, other.maxWidth) && MessagesPigeonUtils.deepEquals(this.maxHeight, other.maxHeight) && MessagesPigeonUtils.deepEquals(this.rotationDegrees, other.rotationDegrees) && MessagesPigeonUtils.deepEquals(this.exifPolicy, other.exifPolicy) && MessagesPigeonUtils.deepEquals(this.targetSizeBytes, other.targetSizeBytes) && MessagesPigeonUtils.deepEquals(this.autoCorrectOrientation, other.autoCorrectOrientation)
   }
 
   override fun hashCode(): Int {
@@ -377,10 +385,11 @@ data class ImageCompressRequest (
     result = 31 * result + MessagesPigeonUtils.deepHash(this.rotationDegrees)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.exifPolicy)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.targetSizeBytes)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.autoCorrectOrientation)
     return result
   }
   override fun toString(): String {
-    return "ImageCompressRequest(taskId=$taskId, sourcePath=$sourcePath, outputPath=$outputPath, format=$format, quality=$quality, maxWidth=$maxWidth, maxHeight=$maxHeight, rotationDegrees=$rotationDegrees, exifPolicy=$exifPolicy, targetSizeBytes=$targetSizeBytes)"
+    return "ImageCompressRequest(taskId=$taskId, sourcePath=$sourcePath, outputPath=$outputPath, format=$format, quality=$quality, maxWidth=$maxWidth, maxHeight=$maxHeight, rotationDegrees=$rotationDegrees, exifPolicy=$exifPolicy, targetSizeBytes=$targetSizeBytes, autoCorrectOrientation=$autoCorrectOrientation)"
   }
 }
 
@@ -1301,58 +1310,6 @@ interface CapabilityHostApi {
         if (api != null) {
           channel.setMessageHandler { _, reply ->
             api.capabilities{ result: Result<CapabilitiesReportMessage> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(MessagesPigeonUtils.wrapError(error))
-              } else {
-                val data = result.getOrNull()
-                reply.reply(MessagesPigeonUtils.wrapResult(data))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-    }
-  }
-}
-/** Generated interface from Pigeon that represents a handler of messages from Flutter. */
-interface CacheHostApi {
-  fun clearCache(callback: (Result<Unit>) -> Unit)
-  fun getCacheSize(callback: (Result<Long>) -> Unit)
-
-  companion object {
-    /** The codec used by CacheHostApi. */
-    val codec: MessageCodec<Any?> by lazy {
-      MessagesPigeonCodec()
-    }
-    /** Sets up an instance of `CacheHostApi` to handle messages through the `binaryMessenger`. */
-    @JvmOverloads
-    fun setUp(binaryMessenger: BinaryMessenger, api: CacheHostApi?, messageChannelSuffix: String = "") {
-      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.pixel_compressor.CacheHostApi.clearCache$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.clearCache{ result: Result<Unit> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(MessagesPigeonUtils.wrapError(error))
-              } else {
-                reply.reply(MessagesPigeonUtils.wrapResult(null))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.pixel_compressor.CacheHostApi.getCacheSize$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.getCacheSize{ result: Result<Long> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(MessagesPigeonUtils.wrapError(error))

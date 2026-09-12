@@ -6,11 +6,18 @@ import 'package:pixel_compressor/pixel_compressor.dart';
 
 import '../utils/format.dart';
 import '../widgets/error_banner.dart';
+import '../widgets/media_source_sheet.dart';
 import '../widgets/section_card.dart';
 import '../widgets/size_comparison_bar.dart';
+import '../widgets/video_preview_player.dart';
 
 class VideoPage extends StatefulWidget {
-  const VideoPage({super.key});
+  const VideoPage({super.key, this.initialFile});
+
+  /// A file already picked (e.g. by the home page's intro/picker step) —
+  /// when set, this is loaded immediately instead of waiting for the user
+  /// to tap "Pick a video".
+  final File? initialFile;
 
   @override
   State<VideoPage> createState() => _VideoPageState();
@@ -37,6 +44,15 @@ class _VideoPageState extends State<VideoPage> {
   Object? _error;
 
   @override
+  void initState() {
+    super.initState();
+    final file = widget.initialFile;
+    if (file != null) {
+      _loadFile(file);
+    }
+  }
+
+  @override
   void dispose() {
     _maxWidthController.dispose();
     _maxHeightController.dispose();
@@ -46,10 +62,7 @@ class _VideoPageState extends State<VideoPage> {
     super.dispose();
   }
 
-  Future<void> _pickVideo() async {
-    final picked = await ImagePicker().pickVideo(source: ImageSource.gallery);
-    if (picked == null) return;
-    final file = File(picked.path);
+  Future<void> _loadFile(File file) async {
     final size = await file.length();
     setState(() {
       _sourceFile = file;
@@ -66,6 +79,17 @@ class _VideoPageState extends State<VideoPage> {
     } on PixelCompressorException {
       // Not fatal — the picked file's on-disk size is already shown.
     }
+  }
+
+  Future<void> _pickVideo() async {
+    final source = await showMediaSourceSheet(
+      context,
+      captureLabel: 'Record a video',
+    );
+    if (source == null) return;
+    final picked = await ImagePicker().pickVideo(source: source);
+    if (picked == null) return;
+    await _loadFile(File(picked.path));
   }
 
   Future<void> _compress() async {
@@ -141,7 +165,7 @@ class _VideoPageState extends State<VideoPage> {
             ],
             OutlinedButton.icon(
               onPressed: _pickVideo,
-              icon: const Icon(Icons.video_library_outlined),
+              icon: const Icon(Icons.video_call_outlined),
               label: Text(
                 file == null ? 'Pick a video' : 'Pick a different video',
               ),
@@ -292,6 +316,11 @@ class _VideoPageState extends State<VideoPage> {
             title: 'Result',
             icon: Icons.check_circle_outline,
             children: [
+              VideoPreviewPlayer(
+                key: ValueKey(_result!.outputPath),
+                file: _result!.outputFile,
+              ),
+              const SizedBox(height: 12),
               SizeComparisonBar(
                 originalBytes: _result!.originalSizeBytes,
                 outputBytes: _result!.outputSizeBytes,

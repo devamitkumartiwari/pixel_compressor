@@ -28,6 +28,10 @@
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Pick a photo or video to try pixel_compressor's compression on.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a photo or record a video to try pixel_compressor's compression on.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Used to record audio when capturing a video to try pixel_compressor's compression on.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

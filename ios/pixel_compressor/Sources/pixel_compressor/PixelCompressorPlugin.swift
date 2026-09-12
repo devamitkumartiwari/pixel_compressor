@@ -26,7 +26,7 @@ import Foundation
 /// call and every Pigeon `completion` is hopped back to the main thread
 /// before touching generated Pigeon callers.
 public class PixelCompressorPlugin: NSObject, FlutterPlugin, ImageHostApi, VideoHostApi,
-  ThumbnailHostApi, MetadataHostApi, CapabilityHostApi, CacheHostApi, TaskHostApi
+  ThumbnailHostApi, MetadataHostApi, CapabilityHostApi, TaskHostApi
 {
   private let taskRegistry = TaskRegistry()
   private let cacheManager = CacheManager()
@@ -68,7 +68,6 @@ public class PixelCompressorPlugin: NSObject, FlutterPlugin, ImageHostApi, Video
     ThumbnailHostApiSetup.setUp(binaryMessenger: binaryMessenger, api: api)
     MetadataHostApiSetup.setUp(binaryMessenger: binaryMessenger, api: api)
     CapabilityHostApiSetup.setUp(binaryMessenger: binaryMessenger, api: api)
-    CacheHostApiSetup.setUp(binaryMessenger: binaryMessenger, api: api)
     TaskHostApiSetup.setUp(binaryMessenger: binaryMessenger, api: api)
   }
 
@@ -110,7 +109,7 @@ public class PixelCompressorPlugin: NSObject, FlutterPlugin, ImageHostApi, Video
     )
   }
 
-  // MARK: - MetadataHostApi / CapabilityHostApi / CacheHostApi (fire-and-forget, no taskId)
+  // MARK: - MetadataHostApi / CapabilityHostApi (fire-and-forget, no taskId)
 
   func getMediaInfo(
     request: MediaInfoRequest,
@@ -131,25 +130,6 @@ public class PixelCompressorPlugin: NSObject, FlutterPlugin, ImageHostApi, Video
     workQueue.async {
       let report = CapabilityProbe.probe()
       DispatchQueue.main.async { completion(.success(report)) }
-    }
-  }
-
-  func clearCache(completion: @escaping (Result<Void, Error>) -> Void) {
-    workQueue.async { [cacheManager] in
-      do {
-        try cacheManager.clear()
-        DispatchQueue.main.async { completion(.success(())) }
-      } catch {
-        let mapped = PixelCompressorError.map(error)
-        DispatchQueue.main.async { completion(.failure(mapped)) }
-      }
-    }
-  }
-
-  func getCacheSize(completion: @escaping (Result<Int64, Error>) -> Void) {
-    workQueue.async { [cacheManager] in
-      let size = cacheManager.size()
-      DispatchQueue.main.async { completion(.success(size)) }
     }
   }
 

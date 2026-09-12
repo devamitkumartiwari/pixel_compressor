@@ -1,10 +1,9 @@
 import 'dart:async';
 
-import '../platform/error_mapping.dart';
-import '../platform/messages.g.dart';
+import '../platform/image_backend.dart';
+import '../platform/image_compressor_backend.dart';
 import '../platform/progress_hub.dart';
 import '../platform/task_id_generator.dart';
-import '../platform/wire_mapping.dart';
 import 'exceptions/pixel_compressor_exception.dart';
 import 'models/batch_item_result.dart';
 import 'models/batch_result.dart';
@@ -12,15 +11,20 @@ import 'models/compression_result.dart';
 import 'models/image_compress_options.dart';
 import 'models/media_source.dart';
 import 'models/progress_event.dart';
+import 'source_deletion.dart';
 
 /// Image compression — reachable as `PixelCompressor.image`.
 class ImageCompressor {
   ImageCompressor.internal();
 
-  final ImageHostApi _api = ImageHostApi();
+  final ImageCompressorBackend _backend = createImageCompressorBackend();
 
   /// Compresses a single image. Pass [onProgress] to observe stage/percent
   /// updates for this task while it runs.
+  ///
+  /// JPEG/PNG compression runs entirely in Dart; WebP/HEIC (and every
+  /// format on native platforms other than web) run through the native
+  /// engines. See `image_backend_io.dart`/`image_backend_web.dart`.
   Future<CompressionResult> compress(
     MediaSource input, {
     ImageCompressOptions options = const ImageCompressOptions(),
@@ -33,24 +37,11 @@ class ImageCompressor {
               .where((e) => e.taskId == taskId)
               .listen(onProgress);
     try {
-      final message = await mapPlatformErrors(
-        () => _api.compressImage(
-          ImageCompressRequest(
-            taskId: taskId,
-            sourcePath: input.resolvedPath,
-            outputPath: options.outputPath,
-            format: options.format?.toWire(),
-            quality: options.quality,
-            maxWidth: options.maxWidth,
-            maxHeight: options.maxHeight,
-            rotationDegrees: options.rotationDegrees,
-            exifPolicy: options.exifPolicy.toWire(),
-            targetSizeBytes: options.targetSizeBytes,
-          ),
-        ),
-        taskId: taskId,
-      );
-      return CompressionResult.fromMessage(message);
+      final result = await _backend.compress(taskId, input, options);
+      if (options.deleteSourceOnSuccess) {
+        await deleteSourceIfRequested(input, result.outputPath);
+      }
+      return result;
     } finally {
       await subscription?.cancel();
     }

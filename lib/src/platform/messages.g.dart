@@ -151,6 +151,7 @@ class ImageCompressRequest {
     required this.rotationDegrees,
     required this.exifPolicy,
     this.targetSizeBytes,
+    required this.autoCorrectOrientation,
   });
 
   String taskId;
@@ -173,6 +174,11 @@ class ImageCompressRequest {
 
   int? targetSizeBytes;
 
+  /// Only consulted by the WebP/HEIC native engines — JPEG/PNG compression
+  /// runs entirely in Dart and applies this itself before ever reaching a
+  /// platform channel.
+  bool autoCorrectOrientation;
+
   List<Object?> _toList() {
     return <Object?>[
       taskId,
@@ -185,6 +191,7 @@ class ImageCompressRequest {
       rotationDegrees,
       exifPolicy,
       targetSizeBytes,
+      autoCorrectOrientation,
     ];
   }
 
@@ -205,6 +212,7 @@ class ImageCompressRequest {
       rotationDegrees: result[7]! as int,
       exifPolicy: result[8]! as ExifPolicyWire,
       targetSizeBytes: result[9] as int?,
+      autoCorrectOrientation: result[10]! as bool,
     );
   }
 
@@ -226,7 +234,8 @@ class ImageCompressRequest {
         _deepEquals(maxHeight, other.maxHeight) &&
         _deepEquals(rotationDegrees, other.rotationDegrees) &&
         _deepEquals(exifPolicy, other.exifPolicy) &&
-        _deepEquals(targetSizeBytes, other.targetSizeBytes);
+        _deepEquals(targetSizeBytes, other.targetSizeBytes) &&
+        _deepEquals(autoCorrectOrientation, other.autoCorrectOrientation);
   }
 
   @override
@@ -235,7 +244,7 @@ class ImageCompressRequest {
 
   @override
   String toString() {
-    return 'ImageCompressRequest(taskId: $taskId, sourcePath: $sourcePath, outputPath: $outputPath, format: $format, quality: $quality, maxWidth: $maxWidth, maxHeight: $maxHeight, rotationDegrees: $rotationDegrees, exifPolicy: $exifPolicy, targetSizeBytes: $targetSizeBytes)';
+    return 'ImageCompressRequest(taskId: $taskId, sourcePath: $sourcePath, outputPath: $outputPath, format: $format, quality: $quality, maxWidth: $maxWidth, maxHeight: $maxHeight, rotationDegrees: $rotationDegrees, exifPolicy: $exifPolicy, targetSizeBytes: $targetSizeBytes, autoCorrectOrientation: $autoCorrectOrientation)';
   }
 }
 
@@ -1312,61 +1321,6 @@ class CapabilityHostApi {
       isNullValid: false,
     );
     return pigeonVar_replyValue! as CapabilitiesReportMessage;
-  }
-}
-
-class CacheHostApi {
-  /// Constructor for [CacheHostApi]. The [binaryMessenger] named argument is
-  /// available for dependency injection. If it is left null, the default
-  /// BinaryMessenger will be used which routes to the host platform.
-  CacheHostApi({
-    BinaryMessenger? binaryMessenger,
-    String messageChannelSuffix = '',
-  }) : pigeonVar_binaryMessenger = binaryMessenger,
-       pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty
-           ? '.$messageChannelSuffix'
-           : '';
-  final BinaryMessenger? pigeonVar_binaryMessenger;
-
-  static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
-
-  final String pigeonVar_messageChannelSuffix;
-
-  Future<void> clearCache() async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.pixel_compressor.CacheHostApi.clearCache$pigeonVar_messageChannelSuffix';
-    final pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
-    );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
-    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
-
-    _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
-  }
-
-  Future<int> getCacheSize() async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.pixel_compressor.CacheHostApi.getCacheSize$pigeonVar_messageChannelSuffix';
-    final pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
-    );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
-    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
-
-    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: false,
-    );
-    return pigeonVar_replyValue! as int;
   }
 }
 

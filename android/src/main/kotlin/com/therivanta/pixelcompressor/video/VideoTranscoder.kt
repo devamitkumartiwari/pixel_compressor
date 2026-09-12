@@ -14,14 +14,17 @@ import kotlinx.coroutines.ensureActive
 /**
  * Video-track transcode pipeline: `MediaExtractor` (compressed source
  * samples) -> `MediaCodec` decoder (writing to a `SurfaceTexture`) -> GPU
- * scale + rotate (via `glViewport` and a position-matrix rotation, see
- * [GlUtil]) -> `MediaCodec` encoder (reading from its own input `Surface`).
- * Trim is applied by seeking the extractor to `trimStartUs` and
- * dropping/rewriting sample PTS. Rotation is baked directly into the
- * encoded pixels here (rather than left as a `MediaMuxer` orientation
- * hint) because many server-side players/transcoders ignore that hint —
- * [targetWidth]/[targetHeight] must already be the caller's post-rotation
- * (swapped, for 90/270) dimensions; see [VideoEngine].
+ * scale (via `glViewport`) -> `MediaCodec` encoder (reading from its own
+ * input `Surface`). Trim is applied by seeking the extractor to
+ * `trimStartUs` and dropping/rewriting sample PTS.
+ *
+ * [rotationDegrees] is currently always passed as `0` by [VideoEngine] —
+ * rotation is carried forward as a standard `MediaMuxer` orientation hint
+ * instead of being baked into pixels here (see [VideoEngine.muxToFile]).
+ * [GlUtil]'s position-matrix rotation support is kept for a possible
+ * future re-introduction of pixel-baked rotation, but is not exercised by
+ * the current call site — [targetWidth]/[targetHeight] are the source's
+ * own raw (pre-rotation) storage dimensions, not swapped.
  *
  * Encoded samples are buffered in memory rather than streamed straight to
  * the muxer, because the muxer can't have tracks added (and therefore
@@ -62,6 +65,12 @@ internal class VideoTranscoder {
     private const val TIMEOUT_US = 10_000L
     private const val FRAME_WAIT_TIMEOUT_MS = 2_500L
     private const val I_FRAME_INTERVAL_SECONDS = 2
+
+    // Same literal key MediaExtractor/MediaMetadataRetriever populate for a
+    // track's rotation hint (android.media.MediaFormat.KEY_ROTATION uses
+    // this same string but is only available from API 23 — the literal
+    // works on every API level this plugin supports).
+    private const val KEY_ROTATION_DEGREES = "rotation-degrees"
   }
 
   suspend fun transcode(
@@ -95,6 +104,18 @@ internal class VideoTranscoder {
 
       val sourceMime = sourceFormat.getString(MediaFormat.KEY_MIME)
         ?: throw PixelCompressorErrors.decodingError("Source video track has no MIME type")
+
+      // Since Android 5.0, MediaCodec auto-applies a KEY_ROTATION_DEGREES
+      // hint from the source format to the output Surface's transform when
+      // decoding to a Surface (see the platform's Utils.cpp). VideoEngine
+      // already carries the source's rotation forward itself (as a muxer
+      // orientation hint, or a GL rotation if pixel-baking is
+      // reintroduced) via [rotationDegrees] below, so the source's own hint
+      // must be zeroed out here — otherwise the two compose and the output
+      // comes out rotated wrong.
+      if (sourceFormat.containsKey(KEY_ROTATION_DEGREES)) {
+        sourceFormat.setInteger(KEY_ROTATION_DEGREES, 0)
+      }
 
       val encFormat = MediaFormat.createVideoFormat(outputMime, targetWidth, targetHeight).apply {
         setInteger(MediaFormat.KEY_COLOR_FORMAT, android.media.MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)

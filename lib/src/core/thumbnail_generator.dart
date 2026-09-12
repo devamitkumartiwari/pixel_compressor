@@ -1,6 +1,10 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import '../platform/error_mapping.dart';
+import '../platform/materialized_source.dart';
 import '../platform/messages.g.dart';
 import '../platform/task_id_generator.dart';
+import '../platform/task_registry_dart.dart';
 import '../platform/wire_mapping.dart';
 import 'exceptions/pixel_compressor_exception.dart';
 import 'metadata_reader.dart';
@@ -24,6 +28,13 @@ class ThumbnailGenerator {
     MediaSource input,
     ThumbnailOptions options,
   ) async {
+    if (kIsWeb) {
+      throw const PlatformNotSupportedException(
+        nativeCode: 'platform_not_supported',
+        nativeMessage: 'PixelCompressor.thumbnails is not supported on web.',
+      );
+    }
+
     final info = await _metadata.read(input);
     final durationMs = info.duration?.inMilliseconds;
     if (durationMs != null) {
@@ -41,20 +52,33 @@ class ThumbnailGenerator {
     }
 
     final taskId = generateTaskId('thumb');
-    final messages = await mapPlatformErrors(
-      () => _api.generateThumbnails(
-        ThumbnailRequest(
-          taskId: taskId,
-          sourcePath: input.resolvedPath,
-          positionsMs: options.positions.map((d) => d.inMilliseconds).toList(),
-          maxWidth: options.maxWidth,
-          maxHeight: options.maxHeight,
-          format: options.format.toWire(),
-          quality: options.quality,
-        ),
-      ),
+    TaskRegistryDart.instance.registerNative(taskId);
+    final materialized = await MaterializedSource.resolve(
+      input,
       taskId: taskId,
+      defaultExtensionHint: 'mp4',
     );
-    return messages.map(ThumbnailResult.fromMessage).toList();
+    try {
+      final messages = await mapPlatformErrors(
+        () => _api.generateThumbnails(
+          ThumbnailRequest(
+            taskId: taskId,
+            sourcePath: materialized.path,
+            positionsMs: options.positions
+                .map((d) => d.inMilliseconds)
+                .toList(),
+            maxWidth: options.maxWidth,
+            maxHeight: options.maxHeight,
+            format: options.format.toWire(),
+            quality: options.quality,
+          ),
+        ),
+        taskId: taskId,
+      );
+      return messages.map(ThumbnailResult.fromMessage).toList();
+    } finally {
+      await materialized.cleanup();
+      TaskRegistryDart.instance.unregister(taskId);
+    }
   }
 }

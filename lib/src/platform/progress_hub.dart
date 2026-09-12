@@ -25,6 +25,14 @@ class ProgressHub implements PixelCompressorProgressCallbackApi {
     _controller.add(ProgressEvent.fromMessage(event));
   }
 
+  /// Pushes [event] directly onto [stream], bypassing the native
+  /// `PixelCompressorProgressCallbackApi` wire path. Used by pure-Dart
+  /// engines (the Dart JPEG/PNG image engine, the web image backend) that
+  /// have no native side to call back from.
+  void emit(ProgressEvent event) {
+    _controller.add(event);
+  }
+
   @override
   void onTaskTerminal(TaskTerminalMessage message) {
     // Terminal state is delivered to callers via the compress() call's own

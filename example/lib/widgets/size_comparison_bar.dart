@@ -47,6 +47,10 @@ class SizeComparisonBar extends StatelessWidget {
       );
     }
 
+    final savedColor = theme.brightness == Brightness.dark
+        ? Colors.greenAccent.shade200
+        : Colors.green.shade700;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -63,9 +67,7 @@ class SizeComparisonBar extends StatelessWidget {
               ? '${formatPercent(savedPercent)} smaller'
               : '${formatPercent(-savedPercent)} larger',
           style: theme.textTheme.titleMedium?.copyWith(
-            color: savedPercent >= 0
-                ? Colors.green.shade700
-                : theme.colorScheme.error,
+            color: savedPercent >= 0 ? savedColor : theme.colorScheme.error,
             fontWeight: FontWeight.bold,
           ),
         ),

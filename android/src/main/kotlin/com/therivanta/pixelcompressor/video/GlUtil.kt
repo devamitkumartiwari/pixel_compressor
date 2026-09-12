@@ -137,18 +137,35 @@ internal class TextureRenderer {
     )
 
     /**
-     * Rigid clockwise rotation applied to [aPosition] (not the texture
-     * coordinates), so it rotates the already-correctly-sampled frame as a
-     * whole rather than depending on [SurfaceTexture]'s own flip/crop
-     * transform. Combined with swapping the encoder's target width/height
-     * for 90/270 (done by the caller), this bakes the source's rotation
-     * hint directly into the encoded pixels instead of leaving it as an
-     * MP4 orientation-hint for the player to apply — see [rotationMatrixForDegrees].
+     * Rigid rotation applied to [aPosition] (not the texture coordinates),
+     * so it rotates the already-correctly-sampled frame as a whole rather
+     * than depending on [SurfaceTexture]'s own flip/crop transform.
+     * Combined with swapping the encoder's target width/height for 90/270
+     * (done by the caller), this bakes the source's rotation hint directly
+     * into the encoded pixels instead of leaving it as an MP4
+     * orientation-hint for the player to apply.
+     *
+     * The 90/270 cases are each other's matrix inverse by construction
+     * (composing them yields identity) — confirmed field-reported (~2,000
+     * users) that portrait video came out rotated the wrong way at exactly
+     * these two angles and correct at 180 (where the two directions
+     * coincide, since 180° is self-inverse). That signature — wrong at
+     * 90/270, fine at 0/180 — is the fingerprint of the two cases being
+     * swapped relative to what's needed, so they're swapped here relative
+     * to the original version of this function. This does not depend on
+     * assumptions about [SurfaceTexture]'s own transform, since that
+     * matrix is applied independently to the texture coordinate and is
+     * unaffected by which of these two matrices is labeled 90 vs 270.
+     *
+     * MUST be verified on a real device against actual 90/180/270
+     * source-rotation-metadata test videos (including a front-camera
+     * clip) before shipping — this is not the kind of bug a code read
+     * alone can fully certify.
      */
     fun rotationMatrixForDegrees(degrees: Int): FloatArray = when (((degrees % 360) + 360) % 360) {
-      90 -> floatArrayOf(0f, -1f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f)
+      90 -> floatArrayOf(0f, 1f, 0f, 0f, -1f, 0f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f)
       180 -> floatArrayOf(-1f, 0f, 0f, 0f, 0f, -1f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f)
-      270 -> floatArrayOf(0f, 1f, 0f, 0f, -1f, 0f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f)
+      270 -> floatArrayOf(0f, -1f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f)
       else -> FloatArray(16).also { Matrix.setIdentityM(it, 0) }
     }
 

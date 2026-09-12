@@ -6,10 +6,16 @@ import 'package:pixel_compressor/pixel_compressor.dart';
 
 import '../utils/format.dart';
 import '../widgets/error_banner.dart';
+import '../widgets/media_source_sheet.dart';
 import '../widgets/section_card.dart';
 
 class ThumbnailsPage extends StatefulWidget {
-  const ThumbnailsPage({super.key});
+  const ThumbnailsPage({super.key, this.initialFile});
+
+  /// A file already picked (e.g. by the home page's intro/picker step) —
+  /// when set, this is loaded immediately instead of waiting for the user
+  /// to tap "Pick a video".
+  final File? initialFile;
 
   @override
   State<ThumbnailsPage> createState() => _ThumbnailsPageState();
@@ -24,10 +30,16 @@ class _ThumbnailsPageState extends State<ThumbnailsPage> {
   List<ThumbnailResult>? _results;
   Object? _error;
 
-  Future<void> _pickVideo() async {
-    final picked = await ImagePicker().pickVideo(source: ImageSource.gallery);
-    if (picked == null) return;
-    final file = File(picked.path);
+  @override
+  void initState() {
+    super.initState();
+    final file = widget.initialFile;
+    if (file != null) {
+      _loadFile(file);
+    }
+  }
+
+  Future<void> _loadFile(File file) async {
     setState(() {
       _sourceFile = file;
       _sourceDuration = null;
@@ -41,6 +53,17 @@ class _ThumbnailsPageState extends State<ThumbnailsPage> {
     } on PixelCompressorException {
       // Fall back to fixed 2s spacing below when duration isn't available.
     }
+  }
+
+  Future<void> _pickVideo() async {
+    final source = await showMediaSourceSheet(
+      context,
+      captureLabel: 'Record a video',
+    );
+    if (source == null) return;
+    final picked = await ImagePicker().pickVideo(source: source);
+    if (picked == null) return;
+    await _loadFile(File(picked.path));
   }
 
   List<Duration> _evenlySpacedPositions() {

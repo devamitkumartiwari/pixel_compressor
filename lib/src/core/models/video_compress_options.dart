@@ -23,6 +23,8 @@ class VideoCompressOptions {
     this.rotationDegrees = 0,
     this.targetSizeBytes,
     this.outputPath,
+    this.deleteSourceOnSuccess = false,
+    this.returnBytes = false,
   }) : assert(
          rotationDegrees == 0 ||
              rotationDegrees == 90 ||
@@ -79,6 +81,16 @@ class VideoCompressOptions {
   /// `null` writes to a cache-managed temp file (see
   /// `PixelCompressor.cache`).
   final String? outputPath;
+
+  /// Deletes the source file after a successful compress. No-op for a
+  /// `MediaSource.bytes`/`.asset` input (no real source file), and for an
+  /// in-place compress where the output overwrote the source.
+  final bool deleteSourceOnSuccess;
+
+  /// Also reads the compressed output back into [CompressionResult.outputBytes].
+  /// The output file is still written to disk as normal. The whole file is
+  /// loaded into memory at once — avoid this for very large outputs.
+  final bool returnBytes;
 
   @override
   String toString() =>

@@ -262,6 +262,10 @@ struct ImageCompressRequest: Hashable, CustomStringConvertible {
   var rotationDegrees: Int64
   var exifPolicy: ExifPolicyWire
   var targetSizeBytes: Int64? = nil
+  /// Only consulted by the WebP/HEIC native engines — JPEG/PNG compression
+  /// runs entirely in Dart and applies this itself before ever reaching a
+  /// platform channel.
+  var autoCorrectOrientation: Bool
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -276,6 +280,7 @@ struct ImageCompressRequest: Hashable, CustomStringConvertible {
     let rotationDegrees = pigeonVar_list[7] as! Int64
     let exifPolicy = pigeonVar_list[8] as! ExifPolicyWire
     let targetSizeBytes: Int64? = nilOrValue(pigeonVar_list[9])
+    let autoCorrectOrientation = pigeonVar_list[10] as! Bool
 
     return ImageCompressRequest(
       taskId: taskId,
@@ -287,7 +292,8 @@ struct ImageCompressRequest: Hashable, CustomStringConvertible {
       maxHeight: maxHeight,
       rotationDegrees: rotationDegrees,
       exifPolicy: exifPolicy,
-      targetSizeBytes: targetSizeBytes
+      targetSizeBytes: targetSizeBytes,
+      autoCorrectOrientation: autoCorrectOrientation
     )
   }
   func toList() -> [Any?] {
@@ -302,13 +308,14 @@ struct ImageCompressRequest: Hashable, CustomStringConvertible {
       rotationDegrees,
       exifPolicy,
       targetSizeBytes,
+      autoCorrectOrientation,
     ]
   }
   static func == (lhs: ImageCompressRequest, rhs: ImageCompressRequest) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return MessagesPigeonInternal.deepEquals(lhs.taskId, rhs.taskId) && MessagesPigeonInternal.deepEquals(lhs.sourcePath, rhs.sourcePath) && MessagesPigeonInternal.deepEquals(lhs.outputPath, rhs.outputPath) && MessagesPigeonInternal.deepEquals(lhs.format, rhs.format) && MessagesPigeonInternal.deepEquals(lhs.quality, rhs.quality) && MessagesPigeonInternal.deepEquals(lhs.maxWidth, rhs.maxWidth) && MessagesPigeonInternal.deepEquals(lhs.maxHeight, rhs.maxHeight) && MessagesPigeonInternal.deepEquals(lhs.rotationDegrees, rhs.rotationDegrees) && MessagesPigeonInternal.deepEquals(lhs.exifPolicy, rhs.exifPolicy) && MessagesPigeonInternal.deepEquals(lhs.targetSizeBytes, rhs.targetSizeBytes)
+    return MessagesPigeonInternal.deepEquals(lhs.taskId, rhs.taskId) && MessagesPigeonInternal.deepEquals(lhs.sourcePath, rhs.sourcePath) && MessagesPigeonInternal.deepEquals(lhs.outputPath, rhs.outputPath) && MessagesPigeonInternal.deepEquals(lhs.format, rhs.format) && MessagesPigeonInternal.deepEquals(lhs.quality, rhs.quality) && MessagesPigeonInternal.deepEquals(lhs.maxWidth, rhs.maxWidth) && MessagesPigeonInternal.deepEquals(lhs.maxHeight, rhs.maxHeight) && MessagesPigeonInternal.deepEquals(lhs.rotationDegrees, rhs.rotationDegrees) && MessagesPigeonInternal.deepEquals(lhs.exifPolicy, rhs.exifPolicy) && MessagesPigeonInternal.deepEquals(lhs.targetSizeBytes, rhs.targetSizeBytes) && MessagesPigeonInternal.deepEquals(lhs.autoCorrectOrientation, rhs.autoCorrectOrientation)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -323,10 +330,11 @@ struct ImageCompressRequest: Hashable, CustomStringConvertible {
     MessagesPigeonInternal.deepHash(value: rotationDegrees, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: exifPolicy, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: targetSizeBytes, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: autoCorrectOrientation, hasher: &hasher)
   }
 
   public var description: String {
-    return "ImageCompressRequest(taskId: \(String(describing: taskId)), sourcePath: \(String(describing: sourcePath)), outputPath: \(String(describing: outputPath)), format: \(String(describing: format)), quality: \(String(describing: quality)), maxWidth: \(String(describing: maxWidth)), maxHeight: \(String(describing: maxHeight)), rotationDegrees: \(String(describing: rotationDegrees)), exifPolicy: \(String(describing: exifPolicy)), targetSizeBytes: \(String(describing: targetSizeBytes)))"
+    return "ImageCompressRequest(taskId: \(String(describing: taskId)), sourcePath: \(String(describing: sourcePath)), outputPath: \(String(describing: outputPath)), format: \(String(describing: format)), quality: \(String(describing: quality)), maxWidth: \(String(describing: maxWidth)), maxHeight: \(String(describing: maxHeight)), rotationDegrees: \(String(describing: rotationDegrees)), exifPolicy: \(String(describing: exifPolicy)), targetSizeBytes: \(String(describing: targetSizeBytes)), autoCorrectOrientation: \(String(describing: autoCorrectOrientation)))"
   }
 }
 
@@ -1247,50 +1255,6 @@ class CapabilityHostApiSetup {
       }
     } else {
       capabilitiesChannel.setMessageHandler(nil)
-    }
-  }
-}
-/// Generated protocol from Pigeon that represents a handler of messages from Flutter.
-protocol CacheHostApi {
-  func clearCache(completion: @escaping (Result<Void, Error>) -> Void)
-  func getCacheSize(completion: @escaping (Result<Int64, Error>) -> Void)
-}
-
-/// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
-class CacheHostApiSetup {
-  static var codec: FlutterStandardMessageCodec { MessagesPigeonCodec.shared }
-  /// Sets up an instance of `CacheHostApi` to handle messages through the `binaryMessenger`.
-  static func setUp(binaryMessenger: FlutterBinaryMessenger, api: CacheHostApi?, messageChannelSuffix: String = "") {
-    let channelSuffix = messageChannelSuffix.count > 0 ? ".\(messageChannelSuffix)" : ""
-    let clearCacheChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.pixel_compressor.CacheHostApi.clearCache\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      clearCacheChannel.setMessageHandler { _, reply in
-        api.clearCache { result in
-          switch result {
-          case .success:
-            reply(wrapResult(nil))
-          case .failure(let error):
-            reply(wrapError(error))
-          }
-        }
-      }
-    } else {
-      clearCacheChannel.setMessageHandler(nil)
-    }
-    let getCacheSizeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.pixel_compressor.CacheHostApi.getCacheSize\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      getCacheSizeChannel.setMessageHandler { _, reply in
-        api.getCacheSize { result in
-          switch result {
-          case .success(let res):
-            reply(wrapResult(res))
-          case .failure(let error):
-            reply(wrapError(error))
-          }
-        }
-      }
-    } else {
-      getCacheSizeChannel.setMessageHandler(nil)
     }
   }
 }

@@ -12,6 +12,9 @@ class ImageCompressOptions {
     this.rotationDegrees = 0,
     this.targetSizeBytes,
     this.outputPath,
+    this.deleteSourceOnSuccess = false,
+    this.returnBytes = false,
+    this.autoCorrectOrientation = true,
   }) : assert(
          quality >= 1 && quality <= 100,
          'quality must be between 1 and 100',
@@ -53,6 +56,21 @@ class ImageCompressOptions {
   /// `null` writes to a cache-managed temp file (see
   /// `PixelCompressor.cache`).
   final String? outputPath;
+
+  /// Deletes the source file after a successful compress. No-op for a
+  /// `MediaSource.bytes`/`.asset` input (no real source file), and for an
+  /// in-place compress where the output overwrote the source.
+  final bool deleteSourceOnSuccess;
+
+  /// Also reads the compressed output back into [CompressionResult.outputBytes].
+  /// The output file is still written to disk as normal.
+  final bool returnBytes;
+
+  /// When `true` (the default), reads the source's EXIF orientation and
+  /// rotates so the output is upright, combined with any requested
+  /// [rotationDegrees]. Set `false` to keep the source's raw, uncorrected
+  /// pixel orientation.
+  final bool autoCorrectOrientation;
 
   @override
   String toString() =>

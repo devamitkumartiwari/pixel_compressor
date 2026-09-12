@@ -1,9 +1,14 @@
 import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../platform/error_mapping.dart';
+import '../platform/materialized_source.dart';
 import '../platform/messages.g.dart';
 import '../platform/progress_hub.dart';
 import '../platform/task_id_generator.dart';
+import '../platform/task_registry_dart.dart';
 import '../platform/wire_mapping.dart';
 import 'exceptions/pixel_compressor_exception.dart';
 import 'models/batch_item_result.dart';
@@ -12,6 +17,7 @@ import 'models/compression_result.dart';
 import 'models/media_source.dart';
 import 'models/progress_event.dart';
 import 'models/video_compress_options.dart';
+import 'source_deletion.dart';
 
 /// Video compression — reachable as `PixelCompressor.video`.
 class VideoCompressor {
@@ -27,18 +33,41 @@ class VideoCompressor {
     VideoCompressOptions options = const VideoCompressOptions(),
     void Function(ProgressEvent event)? onProgress,
   }) async {
+    if (kIsWeb) {
+      throw const PlatformNotSupportedException(
+        nativeCode: 'platform_not_supported',
+        nativeMessage: 'PixelCompressor.video is not supported on web.',
+      );
+    }
+
+    final trimStart = options.trimStart;
+    final trimEnd = options.trimEnd;
+    if (trimStart != null && trimEnd != null && trimEnd <= trimStart) {
+      throw InvalidMediaException(
+        nativeCode: 'invalid_media',
+        nativeMessage:
+            'trimEnd ($trimEnd) must be after trimStart ($trimStart)',
+      );
+    }
+
     final taskId = generateTaskId('vid');
     final subscription = onProgress == null
         ? null
         : ProgressHub.instance.stream
               .where((e) => e.taskId == taskId)
               .listen(onProgress);
+    TaskRegistryDart.instance.registerNative(taskId);
+    final materialized = await MaterializedSource.resolve(
+      input,
+      taskId: taskId,
+      defaultExtensionHint: 'mp4',
+    );
     try {
       final message = await mapPlatformErrors(
         () => _api.compressVideo(
           VideoCompressRequest(
             taskId: taskId,
-            sourcePath: input.resolvedPath,
+            sourcePath: materialized.path,
             outputPath: options.outputPath,
             preset: options.preset?.toWire(),
             codec: options.codec?.toWire(),
@@ -57,9 +86,20 @@ class VideoCompressor {
         ),
         taskId: taskId,
       );
-      return CompressionResult.fromMessage(message);
+      var result = CompressionResult.fromMessage(message);
+      if (options.returnBytes) {
+        result = result.withOutputBytes(
+          await File(result.outputPath).readAsBytes(),
+        );
+      }
+      if (options.deleteSourceOnSuccess) {
+        await deleteSourceIfRequested(input, result.outputPath);
+      }
+      return result;
     } finally {
       await subscription?.cancel();
+      await materialized.cleanup();
+      TaskRegistryDart.instance.unregister(taskId);
     }
   }
 
