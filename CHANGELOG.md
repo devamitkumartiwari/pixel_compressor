@@ -1,18 +1,21 @@
-## Unreleased
+## 0.2.0
 
-* Fixed the actual root cause of Android video rotation coming out wrong
-  (superseding the 0.2.0 fix below, which addressed a different symptom of
-  the same underlying bug): since Android 5.0, `MediaCodec` auto-applies a
-  source video's own rotation hint to the decoder's output `Surface`
-  transform whenever it decodes to a `Surface` — a platform behavior this
-  plugin never accounted for. The result was rotation being applied twice
-  (once by the platform during decode, once by this plugin's own
-  handling), most visibly wrong at 90°/270° source rotations. Fixed by
-  zeroing the source format's rotation hint before configuring the
-  decoder; the combined source + requested rotation is now carried
-  forward as a standard `MediaMuxer.setOrientationHint()` container hint
-  (the same mechanism camera apps themselves use) rather than being baked
-  into pixels via a GPU render pass.
+* Fixed Android video rotation coming out wrong: since Android 5.0,
+  `MediaCodec` auto-applies a source video's own rotation hint to the
+  decoder's output `Surface` transform whenever it decodes to a `Surface`
+  — a platform behavior this plugin didn't account for. The result was
+  rotation being applied twice (once by the platform during decode, once
+  by this plugin's own handling), most visibly wrong at 90°/270° source
+  rotations. Fixed by zeroing the source format's rotation hint before
+  configuring the decoder; the combined source + requested rotation is
+  now carried forward as a standard `MediaMuxer.setOrientationHint()`
+  container hint — the same mechanism camera apps themselves use.
+* Hardened `rotationDegrees` validation (image and video, Android and
+  iOS): the public API's 0/90/180/270 contract was previously enforced
+  only by a Dart `assert`, which is compiled out of release builds. An
+  out-of-range value now throws `InvalidMediaException` on the native
+  side instead of silently producing wrong (video) or clipped (image)
+  output.
 * Added `MediaSource.bytes()` and `MediaSource.asset()` — compress
   in-memory bytes or a bundled Flutter asset directly, no temp `File`
   management required from the caller. Works alongside the existing
@@ -54,22 +57,6 @@
   side before any platform call — an invalid range (`trimEnd` at or before
   `trimStart`) throws `InvalidMediaException` immediately instead of
   failing partway through native decoding.
-
-## 0.2.0
-
-* Fixed Android video rotation: rotation was previously written only as an
-  MP4 orientation-hint metadata flag (`MediaMuxer.setOrientationHint`),
-  which many server-side players and transcoders ignore, producing
-  rotated/upside-down output even though on-device playback (which honors
-  the hint) looked correct. Rotation is now baked directly into the
-  encoded pixels via a GPU render pass, matching the approach already used
-  on iOS/macOS.
-* Hardened `rotationDegrees` validation (image and video, Android and
-  iOS): the public API's 0/90/180/270 contract was previously enforced
-  only by a Dart `assert`, which is compiled out of release builds. An
-  out-of-range value now throws `InvalidMediaException` on the native
-  side instead of silently producing wrong (video) or clipped (image)
-  output.
 
 ## 0.1.0
 
