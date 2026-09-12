@@ -1,3 +1,12 @@
 # Demo assets used only by the GitHub-rendered README (linked via raw.githubusercontent.com
 # URLs, not relative paths) — excluded from the published package to keep it lightweight.
 art/
+
+# Local build artifacts. Already covered by .gitignore, but `dart pub
+# publish` does not reliably apply .gitignore on its own — one of these
+# (build/test_cache/**/*.dill.track.dill) added ~51MB of Dart compiler
+# cache to the published archive until this was added explicitly.
+build/
+.dart_tool/
+example/build/
+example/.dart_tool/
