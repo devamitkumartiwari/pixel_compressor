@@ -1,17 +1,31 @@
-# example
+# pixel_compressor example
 
-A new Flutter project.
+A demo app for every pixel_compressor API, in seven tabs:
 
-## Getting Started
+| Tab | Shows |
+|---|---|
+| **Image** | JPEG, PNG, WebP and HEIC compression with resizing, rotation and EXIF options |
+| **Batch** | Compressing many files at once with limited concurrency |
+| **Inspect** | An image's size, format and orientation, read without compressing |
+| **Video** | H.264 / HEVC compression with trimming, resizing, bitrate and audio settings |
+| **Thumbnails** | JPEG frames at exact positions, as bytes or files |
+| **Merge** | Strips and grids of images, with a live preview |
+| **Tools** | Platform support, validation, logging and cache controls |
 
-This project is a starting point for a Flutter application.
+Three sample images in `assets/samples/` let you try every image feature without picking a file. For your own media it uses `wechat_assets_picker` on Android, iOS and macOS, and the browser's file dialog on the web.
 
-A few resources to get you started if this is your first Flutter project:
+## Run
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```sh
+flutter run
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Integration test
+
+`integration_test/app_test.dart` drives every tab with the samples (real native compression) in a phone layout and a wide layout, and saves screenshots:
+
+```sh
+flutter test integration_test -d <device-id>
+```
+
+On macOS, keep the app window visible while the test runs. A hidden window doesn't draw frames, so the test stalls.

@@ -1,10 +1,9 @@
 Pod::Spec.new do |s|
   s.name             = 'pixel_compressor'
-  s.version          = '0.0.1'
+  s.version          = '0.3.0'
   s.summary          = 'pixel_compressor Flutter plugin — macOS support.'
   s.description      = <<-DESC
-Native image and video compression for Flutter, built on AVFoundation,
-VideoToolbox, and ImageIO — no FFmpeg, no third-party native dependencies.
+Image and video compression for Flutter, built on ImageIO and AVFoundation.
                        DESC
   s.homepage         = 'https://github.com/devamitkumartiwari/pixel_compressor'
   s.license          = { :file => '../LICENSE' }
@@ -16,7 +15,7 @@ VideoToolbox, and ImageIO — no FFmpeg, no third-party native dependencies.
 
   s.platform = :osx, '13.0'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
-  s.swift_version = '5.0'
+  s.swift_version = '5.9'
 
   s.resource_bundles = {'pixel_compressor_privacy' => ['pixel_compressor/Sources/pixel_compressor/PrivacyInfo.xcprivacy']}
 end

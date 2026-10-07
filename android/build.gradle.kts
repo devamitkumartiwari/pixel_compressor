@@ -1,5 +1,5 @@
 group = "com.therivanta.pixelcompressor"
-version = "1.0-SNAPSHOT"
+version = "0.3.0"
 
 buildscript {
     repositories {
@@ -24,16 +24,19 @@ plugins {
     id("com.android.library")
 }
 
-// Self-contained buildscript classpath above means this doesn't depend on the
-// consuming app having declared org.jetbrains.kotlin.android anywhere — applying
-// it transitively via Flutter's Gradle plugin isn't reliable under every
-// AGP/Gradle declarative plugins{} configuration.
+// AGP 9 compiles Kotlin itself ("built-in Kotlin") unless the app opts out
+// with android.builtInKotlin=false, which current Flutter templates still
+// do. Apply the Kotlin plugin ourselves whenever built-in Kotlin is off, so
+// the plugin compiles without relying on the app or Flutter's Gradle plugin
+// to apply it.
 val agpMajor = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.substringBefore('.').toInt()
-if (agpMajor < 9) {
+val builtInKotlin = agpMajor >= 9 &&
+    (findProperty("android.builtInKotlin")?.toString()?.toBooleanStrictOrNull() ?: true)
+if (!builtInKotlin && !pluginManager.hasPlugin("org.jetbrains.kotlin.android")) {
     apply(plugin = "org.jetbrains.kotlin.android")
 }
 
-android {
+extensions.configure<com.android.build.api.dsl.LibraryExtension> {
     namespace = "com.therivanta.pixelcompressor"
 
     compileSdk = 37
@@ -43,39 +46,24 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    sourceSets {
-        getByName("main") {
-            java.srcDirs("src/main/kotlin")
-        }
-        getByName("test") {
-            java.srcDirs("src/test/kotlin")
-        }
-    }
-
     defaultConfig {
         minSdk = 28
     }
-
-    dependencies {
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
-        implementation("androidx.exifinterface:exifinterface:1.3.7")
-        implementation("androidx.heifwriter:heifwriter:1.0.0")
-        testImplementation("org.jetbrains.kotlin:kotlin-test")
-    }
-
-    testOptions {
-        unitTests.all {
-            it.useJUnitPlatform()
-
-            it.testLogging {
-                events("passed", "skipped", "failed", "standardOut", "standardError")
-                showStandardStreams = true
-            }
-        }
-    }
 }
 
-kotlin {
+dependencies {
+    // Image. exifinterface 1.3.7+ fixes the
+    // WebP EXIF writer bugs that keepExif=true on WebP output depends on.
+    "implementation"("androidx.exifinterface:exifinterface:1.4.2")
+    "implementation"("androidx.heifwriter:heifwriter:1.0.0")
+
+    // Video (Media3 Transformer engine).
+    "implementation"("androidx.media3:media3-transformer:1.11.1")
+    "implementation"("androidx.media3:media3-effect:1.11.1")
+    "implementation"("androidx.media3:media3-common:1.11.1")
+}
+
+extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension> {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }

@@ -1,90 +1,102 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 
-/// Bottom sheet letting the user choose between picking from the gallery
-/// or capturing fresh with the camera. Shared by the image and video pages.
-///
-/// `image_picker`'s macOS backend has no camera capture support (it throws
-/// unless a `cameraDelegate` is wired up), so on desktop this skips the
-/// sheet and goes straight to the gallery/file picker.
-Future<ImageSource?> showMediaSourceSheet(
+import '../theme/app_theme.dart';
+import '../utils/media.dart';
+import '../utils/platform_support.dart';
+import '../utils/web_file_picker.dart';
+
+/// What the user chose in [showMediaSourceSheet].
+sealed class const MediaChoice();
+
+/// The device gallery (or the browser's file dialog on the web).
+class const PickFromGallery() extends MediaChoice;
+
+/// A bundled sample; [sample] is null for "all samples".
+class const UseSample(this.sample) extends MediaChoice {
+  final Sample? sample;
+}
+
+/// Bottom sheet: gallery and, for images, the bundled samples. Goes straight
+/// to the gallery when that's the only option.
+Future<MediaChoice?> showMediaSourceSheet(
   BuildContext context, {
-  required String captureLabel,
+  required String title,
+  bool showSamples = false,
+  bool multiple = false,
 }) {
-  if (!Platform.isAndroid && !Platform.isIOS) {
-    return Future.value(ImageSource.gallery);
+  if (!showSamples) {
+    return .value(const PickFromGallery());
   }
-  return showModalBottomSheet<ImageSource>(
+  return showModalBottomSheet<MediaChoice>(
     context: context,
-    backgroundColor: Colors.white,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-    ),
-    builder: (context) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.black12,
-                  borderRadius: BorderRadius.circular(4),
-                ),
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (context) {
+      final theme = Theme.of(context);
+      return SafeArea(
+        child: Padding(
+          padding: const .fromLTRB(Insets.lg, 0, Insets.lg, Insets.lg),
+          child: Column(
+            mainAxisSize: .min,
+            crossAxisAlignment: .start,
+            children: [
+              Text(title, style: theme.textTheme.titleLarge),
+              const SizedBox(height: Insets.md + 4),
+              _SourceOption(
+                icon: Icons.photo_library_rounded,
+                label: PlatformSupport.isWeb ? 'Browse' : 'Gallery',
+                color: theme.colorScheme.primary,
+                onTap: () => Navigator.of(context).pop(const PickFromGallery()),
               ),
-            ),
-            const SizedBox(height: 20),
-            Text('Add media', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 4),
-            Text(
-              'Choose where to pick it from',
-              style: Theme.of(context).textTheme.bodyMedium
-                  ?.copyWith(color: Colors.black54),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: _SourceOption(
-                    icon: Icons.photo_library_rounded,
-                    label: 'Gallery',
-                    color: const Color(0xFF3B82F6),
-                    onTap: () => Navigator.of(context).pop(ImageSource.gallery),
-                  ),
+              if (showSamples) ...[
+                const SizedBox(height: Insets.lg),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text('Samples', style: theme.textTheme.titleSmall),
+                    ),
+                    if (multiple)
+                      TextButton.icon(
+                        onPressed: () =>
+                            Navigator.of(context).pop(const UseSample(null)),
+                        icon: const Icon(Icons.done_all_rounded, size: 18),
+                        label: const Text('Use all'),
+                      ),
+                  ],
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: _SourceOption(
-                    icon: Icons.camera_alt_rounded,
-                    label: captureLabel,
-                    color: const Color(0xFFEF4444),
-                    onTap: () => Navigator.of(context).pop(ImageSource.camera),
+                const SizedBox(height: Insets.sm),
+                SizedBox(
+                  height: 132,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: samples.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(width: Insets.sm + 4),
+                    itemBuilder: (context, i) => _SampleTile(
+                      sample: samples[i],
+                      onTap: () =>
+                          Navigator.of(context).pop(UseSample(samples[i])),
+                    ),
                   ),
                 ),
               ],
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    ),
+      );
+    },
   );
 }
 
-class _SourceOption extends StatelessWidget {
-  const _SourceOption({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
+class const _SourceOption({
+  required this.icon,
+  required this.label,
+  required this.color,
+  required this.onTap,
+}) extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
@@ -92,45 +104,134 @@ class _SourceOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Material(
       color: color.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(Insets.cardRadius),
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(Insets.cardRadius),
         onTap: () {
           HapticFeedback.selectionClick();
           onTap();
         },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withValues(alpha: 0.18)),
-          ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: Insets.md + 4),
           child: Column(
             children: [
               Container(
                 width: 52,
                 height: 52,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: Icon(icon, color: Colors.white, size: 26),
+                decoration: BoxDecoration(color: color, shape: .circle),
+                child: Icon(icon, color: theme.colorScheme.surface, size: 26),
               ),
-              const SizedBox(height: 12),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
+              const SizedBox(height: Insets.sm + 4),
+              Text(label, style: theme.textTheme.labelLarge),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+class const _SampleTile({required this.sample, required this.onTap})
+    extends StatelessWidget {
+  final Sample sample;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      width: 112,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Insets.controlRadius),
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: .start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(Insets.controlRadius),
+              child: Image.asset(
+                sample.asset,
+                width: 112,
+                height: 84,
+                fit: BoxFit.cover,
+                cacheWidth: 336,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              sample.label,
+              maxLines: 1,
+              overflow: .ellipsis,
+              style: theme.textTheme.labelMedium,
+            ),
+            Text(
+              sample.description,
+              maxLines: 1,
+              overflow: .ellipsis,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Picks one or more images via [showMediaSourceSheet]. Returns null when
+/// the user backs out.
+Future<List<PickedImage>?> pickImages(
+  BuildContext context, {
+  bool multiple = false,
+}) async {
+  final choice = await showMediaSourceSheet(
+    context,
+    title: multiple ? 'Add images' : 'Add an image',
+    showSamples: true,
+    multiple: multiple,
+  );
+  switch (choice) {
+    case null:
+      return null;
+    case UseSample(:final sample):
+      return [
+        for (final s in sample == null ? samples : [sample])
+          await .fromSample(s),
+      ];
+    case PickFromGallery():
+      if (kIsWeb) {
+        final files = await pickWebFiles(accept: 'image/*', multiple: multiple);
+        return files.isEmpty ? null : files.map(PickedImage.fromWeb).toList();
+      }
+      if (!context.mounted) return null;
+      final assets = await AssetPicker.pickAssets(
+        context,
+        pickerConfig: AssetPickerConfig(
+          maxAssets: multiple ? _maxImages : 1,
+          requestType: .image,
+        ),
+      );
+      if (assets == null || assets.isEmpty) return null;
+      final images = [
+        for (final asset in assets) ?await PickedImage.fromAssetEntity(asset),
+      ];
+      return images.isEmpty ? null : images;
+  }
+}
+
+/// Upper bound for multi-select (batch and merge).
+const _maxImages = 20;
+
+/// Picks a video from the gallery. Returns its path, or null.
+Future<String?> pickVideo(BuildContext context) async {
+  final assets = await AssetPicker.pickAssets(
+    context,
+    pickerConfig: const AssetPickerConfig(maxAssets: 1, requestType: .video),
+  );
+  final file = await assets?.firstOrNull?.originFile;
+  return file?.path;
 }

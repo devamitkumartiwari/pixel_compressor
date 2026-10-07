@@ -3,13 +3,17 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+import 'feedback.dart';
+
 /// An inline video player with tap-to-play/pause, a progress bar, and a
 /// button to open the same video full-screen. Give it a [ValueKey] on the
 /// file path at the call site so Flutter creates a fresh player (rather
 /// than reusing state) whenever the underlying file changes.
-class VideoPreviewPlayer extends StatefulWidget {
-  const VideoPreviewPlayer({super.key, required this.file, this.height = 220});
-
+class const VideoPreviewPlayer({
+  super.key,
+  required this.file,
+  this.height = 220,
+}) extends StatefulWidget {
   final File file;
   final double height;
 
@@ -17,14 +21,14 @@ class VideoPreviewPlayer extends StatefulWidget {
   State<VideoPreviewPlayer> createState() => _VideoPreviewPlayerState();
 }
 
-class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
+class _VideoPreviewPlayerState() extends State<VideoPreviewPlayer> {
   late final VideoPlayerController _controller;
   late final Future<void> _initialize;
 
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.file(widget.file);
+    _controller = .file(widget.file);
     _initialize = _controller.initialize().then((_) {
       if (mounted) setState(() {});
     });
@@ -57,23 +61,35 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
     return FutureBuilder<void>(
       future: _initialize,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return SizedBox(
+        if (snapshot.connectionState != .done) {
+          return ShimmerBox(height: widget.height);
+        }
+        if (snapshot.hasError || _controller.value.size.isEmpty) {
+          final scheme = Theme.of(context).colorScheme;
+          return Container(
             height: widget.height,
-            child: const Center(child: CircularProgressIndicator()),
+            alignment: .center,
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHigh,
+              borderRadius: .circular(16),
+            ),
+            child: Text(
+              "Can't play this video here",
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
           );
         }
         return ClipRRect(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: .circular(16),
           child: SizedBox(
             height: widget.height,
             width: double.infinity,
             child: Stack(
-              alignment: Alignment.center,
-              fit: StackFit.expand,
+              alignment: .center,
+              fit: .expand,
               children: [
                 FittedBox(
-                  fit: BoxFit.cover,
+                  fit: .cover,
                   child: SizedBox(
                     width: _controller.value.size.width,
                     height: _controller.value.size.height,
@@ -87,7 +103,7 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
                     duration: const Duration(milliseconds: 200),
                     child: Container(
                       color: Colors.black26,
-                      alignment: Alignment.center,
+                      alignment: .center,
                       child: const Icon(
                         Icons.play_arrow,
                         color: Colors.white,
@@ -111,7 +127,7 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
                   child: VideoProgressIndicator(
                     _controller,
                     allowScrubbing: true,
-                    padding: const EdgeInsets.all(4),
+                    padding: const .all(4),
                   ),
                 ),
               ],
@@ -123,23 +139,21 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
   }
 }
 
-class _FullScreenVideo extends StatefulWidget {
-  const _FullScreenVideo({required this.file});
-
+class const _FullScreenVideo({required this.file}) extends StatefulWidget {
   final File file;
 
   @override
   State<_FullScreenVideo> createState() => _FullScreenVideoState();
 }
 
-class _FullScreenVideoState extends State<_FullScreenVideo> {
+class _FullScreenVideoState() extends State<_FullScreenVideo> {
   late final VideoPlayerController _controller;
   late final Future<void> _initialize;
 
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.file(widget.file);
+    _controller = .file(widget.file);
     _initialize = _controller.initialize().then((_) {
       if (mounted) setState(() => _controller.play());
     });
@@ -163,7 +177,7 @@ class _FullScreenVideoState extends State<_FullScreenVideo> {
         child: FutureBuilder<void>(
           future: _initialize,
           builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
+            if (snapshot.connectionState != .done) {
               return const CircularProgressIndicator();
             }
             return GestureDetector(

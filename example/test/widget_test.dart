@@ -4,28 +4,60 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:example/main.dart';
 
 void main() {
-  testWidgets('app launches on the image compression page', (
-    WidgetTester tester,
-  ) async {
+  Future<void> launch(WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(const PixelCompressorExampleApp());
     await tester.pumpAndSettle();
+  }
 
-    expect(find.text('pixel_compressor — Image'), findsOneWidget);
-    expect(find.text('Pick an image'), findsOneWidget);
+  testWidgets('launches on the Image tab with its empty state', (tester) async {
+    await launch(tester);
+
+    expect(find.text('pixel_compressor'), findsOneWidget);
+    expect(find.text('Pick an image to compress'), findsOneWidget);
+    expect(find.text('Add image'), findsOneWidget);
   });
 
-  testWidgets('drawer navigates to the capabilities page', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(const PixelCompressorExampleApp());
-    await tester.pumpAndSettle();
+  // Tab label → text that only that tab's page shows.
+  const pages = {
+    'Batch': 'Pick a few images',
+    'Inspect': 'IMAGE HEADER · PIXELIMAGEINFO',
+    'Video': 'Pick a video to compress',
+    'Thumbnails': 'Pick a video',
+    'Merge': 'Combine images',
+    'Tools': 'VALIDATOR',
+  };
 
-    await tester.tap(find.byIcon(Icons.menu));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Capabilities'));
-    await tester.pumpAndSettle();
+  for (final MapEntry(key: tab, value: marker) in pages.entries) {
+    testWidgets('$tab tab is reachable', (tester) async {
+      await launch(tester);
 
-    expect(find.text('pixel_compressor — Capabilities'), findsOneWidget);
-    expect(find.text('Check capabilities'), findsOneWidget);
+      final tabFinder = find.descendant(
+        of: find.byType(TabBar),
+        matching: find.text(tab),
+      );
+      await tester.ensureVisible(tabFinder);
+      await tester.tap(tabFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.text(marker), findsOneWidget);
+    });
+  }
+
+  testWidgets('theme toggle cycles system → light → dark', (tester) async {
+    await launch(tester);
+
+    MaterialApp app() => tester.widget(find.byType(MaterialApp));
+    expect(app().themeMode, ThemeMode.system);
+
+    await tester.tap(find.byTooltip('Theme: System'));
+    await tester.pumpAndSettle();
+    expect(app().themeMode, ThemeMode.light);
+
+    await tester.tap(find.byTooltip('Theme: Light'));
+    await tester.pumpAndSettle();
+    expect(app().themeMode, ThemeMode.dark);
   });
 }

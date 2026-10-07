@@ -1,5 +1,5 @@
 name: example
-description: "A new Flutter project."
+description: "Showcase app for pixel_compressor."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -28,32 +28,26 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-  flutter:
-    sdk: flutter
-
-  pixel_compressor:
-    path: ../
-
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-
-  # Lets the demo pages pick a real image/video from the device to feed
-  # into PixelCompressor.
-  image_picker: ^1.1.2
-  video_player: ^2.14.0
-  google_fonts: ^8.2.1
+  flutter:
+    sdk: flutter
+  pixel_compressor:
+    path: ../
+  # Plays the source and compressed video on the Video tab.
+  video_player: ^2.14.1
+  web: ^1.1.1
+  # Gallery picker for images and videos (Android, iOS, macOS). On the web
+  # the example uses a plain <input type="file"> instead.
+  wechat_assets_picker: ^10.1.3
 
 dev_dependencies:
+  flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
-
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
-  flutter_lints: ^6.0.0
+  integration_test:
+    sdk: flutter
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -65,6 +59,10 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Generated, license-free sample images (Image, Batch, Inspect, Merge tabs).
+  assets:
+    - assets/samples/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
