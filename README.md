@@ -5,76 +5,13 @@
 
 One Flutter plugin to compress images, compress videos and merge images, all on the device.
 
-It covers min/max/exact sizing, output info, batch compression, image merging, HEVC and bitrate control. Android video runs on **Media3 Transformer**; iOS and macOS use **AVFoundation**. There is no FFmpeg, nothing is uploaded, and no runtime permission is needed.
-
-## Contents
-
-- [Features](#features)
-- [Platform support](#platform-support)
-- [Installation](#installation)
-- [Quick start](#quick-start)
-- [Image compression](#image-compression)
-- [Merging images](#merging-images)
-- [Video compression](#video-compression)
-- [Advanced: platform interface and types](#advanced-platform-interface-and-types)
-- [Store compliance](#store-compliance)
-- [Troubleshooting](#troubleshooting)
-- [Example app](#example-app)
-- [License](#license)
+Android video runs on **Media3 Transformer**; iOS and macOS use **AVFoundation**. There is no FFmpeg, nothing is uploaded, and no runtime permission is needed.
 
 ## Features
 
-**Images**
-- Compress to JPEG, PNG, WebP or HEIC from a file, bytes or a Flutter asset.
-- Resize by lower bounds (`minWidth`/`minHeight`), upper bounds (`maxWidth`/`maxHeight`) or an exact size with stretch, contain (letterbox) or cover (crop).
-- Automatic EXIF rotation, extra rotation, and optionally keep EXIF metadata.
-- Read an image's size, format and orientation from its header without decoding it (pure Dart).
-- Batch-compress many files with bounded concurrency and progress.
-
-**Merging**
-- Combine two or more images vertically, horizontally or as a grid (justified gallery).
-- Spacing, padding, rounded corners, alignment and background colour.
-- Bounded memory, so large photos don't crash it. Works on every platform, including web.
-- A `PixelMergeView` widget for a live preview, with an export that matches it pixel for pixel.
-
-**Video**
-- Compress to MP4 (H.264 or HEVC) with quality presets or an explicit max size and bitrate.
-- Trim, remove audio, cap the frame rate, and set the AAC bitrate, sample rate and channels.
-- By default the output is never larger than the source.
-- Progress stream, cancellation, thumbnails (bytes or file) and media info.
-
-## Platform support
-
-| Feature | Android | iOS | macOS | Web |
-|---|:-:|:-:|:-:|:-:|
-| `compressBytes` / `compressAsset` | ✅ | ✅ | ✅ | ✅ |
-| `compressFileToBytes` / `compressFileToFile` | ✅ | ✅ | ✅ | ❌ |
-| `compressBytesWithInfo` / `PixelImageInfo` | ✅ | ✅ | ✅ | ✅ |
-| `compressFileWithInfo` / `compressFilesToBytes` | ✅ | ✅ | ✅ | ❌ |
-| `PixelImageMerger` / `PixelMergeView` | ✅ | ✅ | ✅ | ✅¹ |
-| Video compression | ✅ | ✅ | ✅ | ❌ |
-| Video thumbnails / media info | ✅ | ✅ | ✅ | ❌ |
-
-¹ On the web, merge sources must be bytes or assets, and `outputPath` isn't available.
-
-**Output formats**
-
-| `PixelImageFormat` | Android | iOS | macOS | Web |
-|---|:-:|:-:|:-:|:-:|
-| `jpeg` | ✅ | ✅ | ✅ | ✅ |
-| `png` | ✅ | ✅ | ✅ | ✅ |
-| `webp` | ✅ | ✅ (SDWebImageWebPCoder) | ❌ no encoder | ✅ (`<canvas>`) |
-| `heic` | ✅ (needs a hardware HEIF encoder) | ✅ | ✅ | ❌ |
-
-**Requirements**
-
-| | |
-|---|---|
-| Android | minSdk 28, compileSdk/targetSdk 37 (Android 17) |
-| iOS | 16.0+, built and tested against the iOS 27 SDK |
-| macOS | 13.0+ |
-| Dart / Flutter | Dart ≥ 3.13, Flutter ≥ 3.41 |
-| Build systems | Swift Package Manager (CocoaPods podspec also included) |
+- **Images:** JPEG, PNG, WebP or HEIC from a file, bytes or an asset; min, max or exact sizing; EXIF rotation and metadata; header-only image info; batch compression.
+- **Merging:** vertical, horizontal or grid collages with spacing, rounded corners and background colour, plus a live `PixelMergeView` preview. Works on every platform, including web.
+- **Video:** H.264 or HEVC MP4 with presets, size, bitrate, trim and audio control; never larger than the source by default; progress, cancellation, thumbnails and media info.
 
 ## Installation
 
@@ -747,6 +684,39 @@ These are exported mainly for testing:
 cd example
 flutter test integration_test -d <device-id>
 ```
+
+## Platform support
+
+| Feature | Android | iOS | macOS | Web |
+|---|:-:|:-:|:-:|:-:|
+| `compressBytes` / `compressAsset` | ✅ | ✅ | ✅ | ✅ |
+| `compressFileToBytes` / `compressFileToFile` | ✅ | ✅ | ✅ | ❌ |
+| `compressBytesWithInfo` / `PixelImageInfo` | ✅ | ✅ | ✅ | ✅ |
+| `compressFileWithInfo` / `compressFilesToBytes` | ✅ | ✅ | ✅ | ❌ |
+| `PixelImageMerger` / `PixelMergeView` | ✅ | ✅ | ✅ | ✅¹ |
+| Video compression | ✅ | ✅ | ✅ | ❌ |
+| Video thumbnails / media info | ✅ | ✅ | ✅ | ❌ |
+
+¹ On the web, merge sources must be bytes or assets, and `outputPath` isn't available.
+
+**Output formats**
+
+| `PixelImageFormat` | Android | iOS | macOS | Web |
+|---|:-:|:-:|:-:|:-:|
+| `jpeg` | ✅ | ✅ | ✅ | ✅ |
+| `png` | ✅ | ✅ | ✅ | ✅ |
+| `webp` | ✅ | ✅ (SDWebImageWebPCoder) | ❌ no encoder | ✅ (`<canvas>`) |
+| `heic` | ✅ (needs a hardware HEIF encoder) | ✅ | ✅ | ❌ |
+
+**Requirements**
+
+| | |
+|---|---|
+| Android | minSdk 28, compileSdk/targetSdk 37 (Android 17) |
+| iOS | 16.0+, built and tested against the iOS 27 SDK |
+| macOS | 13.0+ |
+| Dart / Flutter | Dart ≥ 3.13, Flutter ≥ 3.41 |
+| Build systems | Swift Package Manager (CocoaPods podspec also included) |
 
 ## License
 
